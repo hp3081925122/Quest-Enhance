@@ -1,0 +1,17 @@
+{
+  "ftb_paste_image.none": "None",
+  "ftb_paste_image.quest_model": "Model",
+  "ftb_paste_image.chapter_text": "Text",
+  "ftb_paste_image.chapter_text.text": "Text",
+  "ftb_paste_image.chapter_text.color": "Text Color",
+  "ftb_paste_image.chapter_text.order": "Text Layer",
+  "ftb_paste_image.chapter_text.alpha": "Text Opacity",
+  "ftb_paste_image.command.cleanup.nothing": "There are no FTB pasted images to clean up.",
+  "ftb_paste_image.command.cleanup.scan_directories_failed": "Failed to scan FTB Quests save directories. No images were deleted.",
+  "ftb_paste_image.command.cleanup.scan_references_failed": "Failed to scan FTB Quests image references. No images were deleted.",
+  "ftb_paste_image.command.cleanup.read_directory_failed": "Failed to read the pasted image directory. No images were deleted.",
+  "ftb_paste_image.command.cleanup.success": "Deleted %s unused images and released %s.",
+  "ftb_paste_image.command.cleanup.delete_failed": "%s images could not be deleted. Check the log for details.",
+  "pack.ftb_paste_image.name": "FTB Paste Image",
+  "pack.ftb_paste_image.description": "FTB Paste Image configuration resources"
+}

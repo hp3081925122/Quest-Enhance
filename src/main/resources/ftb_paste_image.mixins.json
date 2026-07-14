@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.ftb_paste_image.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "ftb_paste_image.refmap.json",
+  "mixins": [],
+  "client": [
+    "ChapterImageAccessor",
+    "ChapterImageButtonMixin",
+    "ChapterImageMixin",
+    "ImageResourceConfigMixin",
+    "KillTaskAccessor",
+    "MultilineTextEditorScreenMixin",
+    "QuestButtonMixin",
+    "QuestConfigMixin",
+    "QuestObjectBaseAccessor",
+    "QuestPanelMixin",
+    "QuestScreenAccessor",
+    "TaskButtonMixin",
+    "ViewQuestPanelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "ftb_paste_image.none": "无",
+  "ftb_paste_image.quest_model": "模型",
+  "ftb_paste_image.chapter_text": "文字",
+  "ftb_paste_image.chapter_text.text": "文字内容",
+  "ftb_paste_image.chapter_text.color": "文字颜色",
+  "ftb_paste_image.chapter_text.order": "文字层级",
+  "ftb_paste_image.chapter_text.alpha": "文字透明度",
+  "ftb_paste_image.command.cleanup.nothing": "没有可清理的 FTB 粘贴图片。",
+  "ftb_paste_image.command.cleanup.scan_directories_failed": "扫描 FTB Quests 存档目录失败，未删除任何图片。",
+  "ftb_paste_image.command.cleanup.scan_references_failed": "扫描 FTB Quests 图片引用失败，未删除任何图片。",
+  "ftb_paste_image.command.cleanup.read_directory_failed": "读取粘贴图片目录失败，未删除任何图片。",
+  "ftb_paste_image.command.cleanup.success": "已删除 %s 张未使用图片，释放 %s。",
+  "ftb_paste_image.command.cleanup.delete_failed": "另有 %s 张图片删除失败，请查看日志。",
+  "pack.ftb_paste_image.name": "FTB 粘贴图片",
+  "pack.ftb_paste_image.description": "FTB 粘贴图片配置资源"
+}
