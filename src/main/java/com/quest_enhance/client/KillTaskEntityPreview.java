@@ -1,6 +1,6 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
-import com.ftb_paste_image.FtbPasteImage;
+import com.quest_enhance.QuestEnhance;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -43,7 +43,7 @@ public final class KillTaskEntityPreview {
                     this.cached_entity = living_entity;
                 }
             } catch (RuntimeException exception) {
-                FtbPasteImage.LOGGER.error("Failed to create entity preview {}", entity_id, exception);
+                QuestEnhance.LOGGER.error("Failed to create entity preview {}", entity_id, exception);
             }
         }
 
@@ -70,7 +70,7 @@ public final class KillTaskEntityPreview {
             return true;
         } catch (RuntimeException exception) {
             this.cached_entity = null;
-            FtbPasteImage.LOGGER.error("Failed to render entity preview {}", entity_id, exception);
+            QuestEnhance.LOGGER.error("Failed to render entity preview {}", entity_id, exception);
             return false;
         } finally {
             graphics.disableScissor();

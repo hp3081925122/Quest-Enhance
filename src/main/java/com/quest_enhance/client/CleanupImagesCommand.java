@@ -1,6 +1,6 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
-import com.ftb_paste_image.FtbPasteImage;
+import com.quest_enhance.QuestEnhance;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -26,11 +26,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-@Mod.EventBusSubscriber(modid = FtbPasteImage.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = QuestEnhance.MOD_ID, value = Dist.CLIENT)
 public final class CleanupImagesCommand {
     private static final Pattern GENERATED_IMAGE_PATTERN = Pattern.compile("clipboard_[0-9]+\\.png");
     private static final Pattern IMAGE_REFERENCE_PATTERN = Pattern.compile(
-            "ftb_paste_image:textures/ftb/(clipboard_[0-9]+\\.png)"
+            "quest_enhance:textures/ftb/(clipboard_[0-9]+\\.png)"
     );
     private static final Set<String> TEXT_FILE_EXTENSIONS = Set.of("snbt", "json", "txt", "toml");
 
@@ -41,7 +41,7 @@ public final class CleanupImagesCommand {
     @SubscribeEvent
     public static void register(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(
-                Commands.literal("ftbpasteimage")
+                Commands.literal("questenhance")
                         .then(Commands.literal("cleanup").executes(CleanupImagesCommand::cleanup))
         );
     }
@@ -50,15 +50,15 @@ public final class CleanupImagesCommand {
     private static int cleanup(CommandContext<CommandSourceStack> context) {
         Path game_directory = FMLPaths.GAMEDIR.get();
         Path image_directory = FMLPaths.CONFIGDIR.get()
-                .resolve(FtbPasteImage.MOD_ID)
+                .resolve(QuestEnhance.MOD_ID)
                 .resolve("assets")
-                .resolve(FtbPasteImage.MOD_ID)
+                .resolve(QuestEnhance.MOD_ID)
                 .resolve("textures")
                 .resolve("ftb");
 
         if (!Files.isDirectory(image_directory)) {
             context.getSource().sendSuccess(
-                    () -> Component.translatable("ftb_paste_image.command.cleanup.nothing"),
+                    () -> Component.translatable("quest_enhance.command.cleanup.nothing"),
                     false
             );
             return 0;
@@ -85,8 +85,8 @@ public final class CleanupImagesCommand {
                 }
             }
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to locate FTB Quests save directories", exception);
-            context.getSource().sendFailure(Component.translatable("ftb_paste_image.command.cleanup.scan_directories_failed"));
+            QuestEnhance.LOGGER.error("Failed to locate FTB Quests save directories", exception);
+            context.getSource().sendFailure(Component.translatable("quest_enhance.command.cleanup.scan_directories_failed"));
             return 0;
         }
 
@@ -122,8 +122,8 @@ public final class CleanupImagesCommand {
                 }
             }
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to scan FTB Quests image references", exception);
-            context.getSource().sendFailure(Component.translatable("ftb_paste_image.command.cleanup.scan_references_failed"));
+            QuestEnhance.LOGGER.error("Failed to scan FTB Quests image references", exception);
+            context.getSource().sendFailure(Component.translatable("quest_enhance.command.cleanup.scan_references_failed"));
             return 0;
         }
 
@@ -136,8 +136,8 @@ public final class CleanupImagesCommand {
                     .filter(path -> GENERATED_IMAGE_PATTERN.matcher(path.getFileName().toString()).matches())
                     .toList();
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to list generated clipboard images", exception);
-            context.getSource().sendFailure(Component.translatable("ftb_paste_image.command.cleanup.read_directory_failed"));
+            QuestEnhance.LOGGER.error("Failed to list generated clipboard images", exception);
+            context.getSource().sendFailure(Component.translatable("quest_enhance.command.cleanup.read_directory_failed"));
             return 0;
         }
 
@@ -156,14 +156,14 @@ public final class CleanupImagesCommand {
                 long image_size = Files.size(image_path);
                 Files.delete(image_path);
                 minecraft.getTextureManager().release(ResourceLocation.fromNamespaceAndPath(
-                        FtbPasteImage.MOD_ID,
+                        QuestEnhance.MOD_ID,
                         "textures/ftb/" + file_name
                 ));
                 deleted_count++;
                 released_bytes += image_size;
             } catch (IOException | RuntimeException exception) {
                 failed_count++;
-                FtbPasteImage.LOGGER.error("Failed to delete unused clipboard image {}", image_path, exception);
+                QuestEnhance.LOGGER.error("Failed to delete unused clipboard image {}", image_path, exception);
             }
         }
 
@@ -175,7 +175,7 @@ public final class CleanupImagesCommand {
                 : String.format(Locale.ROOT, "%.2f KiB", final_released_bytes / 1024.0D);
         context.getSource().sendSuccess(
                 () -> Component.translatable(
-                        "ftb_paste_image.command.cleanup.success",
+                        "quest_enhance.command.cleanup.success",
                         final_deleted_count,
                         released_size
                 ),
@@ -184,12 +184,12 @@ public final class CleanupImagesCommand {
 
         if (failed_count > 0) {
             context.getSource().sendFailure(Component.translatable(
-                    "ftb_paste_image.command.cleanup.delete_failed",
+                    "quest_enhance.command.cleanup.delete_failed",
                     failed_count
             ));
         }
 
-        FtbPasteImage.LOGGER.info(
+        QuestEnhance.LOGGER.info(
                 "Cleaned up {} unused clipboard images and released {} bytes; {} deletions failed",
                 deleted_count,
                 released_bytes,

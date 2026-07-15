@@ -1,6 +1,6 @@
-package com.ftb_paste_image;
+package com.quest_enhance;
 
-import com.ftb_paste_image.client.FtbPasteImageClientConfig;
+import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackType;
@@ -20,16 +20,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 // 提供模组标识和统一日志入口
-@Mod(FtbPasteImage.MOD_ID)
-public final class FtbPasteImage {
-    public static final String MOD_ID = "ftb_paste_image";
+@Mod(QuestEnhance.MOD_ID)
+public final class QuestEnhance {
+    public static final String MOD_ID = "quest_enhance";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     // 注册客户端配置目录资源包事件
-    public FtbPasteImage(FMLJavaModLoadingContext loading_context) {
+    public QuestEnhance(FMLJavaModLoadingContext loading_context) {
         loading_context.registerConfig(
                 ModConfig.Type.CLIENT,
-                FtbPasteImageClientConfig.SPEC,
+                QuestEnhanceClientConfig.SPEC,
                 MOD_ID + "-client.toml"
         );
         loading_context.getModEventBus().addListener(this::addPackFinder);
@@ -52,7 +52,7 @@ public final class FtbPasteImage {
             Files.createDirectories(image_directory);
             Files.writeString(
                     pack_root.resolve("pack.mcmeta"),
-                    "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.ftb_paste_image.description\"\n    },\n    \"pack_format\": 15\n  }\n}\n",
+                    "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.quest_enhance.description\"\n    },\n    \"pack_format\": 15\n  }\n}\n",
                     StandardCharsets.UTF_8
             );
         } catch (IOException exception) {
@@ -64,7 +64,7 @@ public final class FtbPasteImage {
         event.addRepositorySource(pack_consumer -> {
             Pack pack = Pack.readMetaAndCreate(
                     MOD_ID,
-                    Component.translatable("pack.ftb_paste_image.name"),
+                    Component.translatable("pack.quest_enhance.name"),
                     true,
                     pack_id -> new PathPackResources(pack_id, true, pack_root),
                     PackType.CLIENT_RESOURCES,

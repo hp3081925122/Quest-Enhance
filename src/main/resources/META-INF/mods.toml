@@ -8,7 +8,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 displayTest = "IGNORE_ALL_VERSION"
-description = '''在 FTB Quests 多行编辑器中通过 Ctrl+V 保存并插入剪贴板图片。'''
+description = '''为 FTB Quests 提供剪贴板图片粘贴、章节画布文字和任务实体模型显示等编辑增强功能。'''
 
 [[dependencies."${mod_id}"]]
 modId = "forge"

@@ -1,6 +1,6 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.client.ChapterCanvasText;
+import com.quest_enhance.client.ChapterCanvasText;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
@@ -38,11 +38,12 @@ public abstract class ChapterImageButtonMixin {
 
     // 为画布文字打开标题和类型都正确的原生属性编辑页
     @Inject(method = "openEditScreen", at = @At("HEAD"), cancellable = true)
-    private void ftb_paste_image$open_text_edit_screen(CallbackInfo callback_info) {
-        Optional<String> text = ChapterCanvasText.getText(this.chapterImage);
-        if (text.isEmpty()) {
+    private void quest_enhance$open_text_edit_screen(CallbackInfo callback_info) {
+        Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
+        if (text_data.isEmpty()) {
             return;
         }
+        ChapterCanvasText.TextData data = text_data.get();
 
         // 保存时继续发送 FTB 原生章节编辑消息并刷新当前按钮
         ChapterImageButton button = (ChapterImageButton) (Object) this;
@@ -56,11 +57,11 @@ public abstract class ChapterImageButtonMixin {
             @Override
             public Component getName() {
                 MutableComponent type = Component.literal(" [")
-                        .append(Component.translatable("ftb_paste_image.chapter_text"))
+                        .append(Component.translatable("quest_enhance.chapter_text"))
                         .append("]")
                         .withStyle(ChatFormatting.AQUA);
                 return Component.empty()
-                        .append(Component.literal(text.get()).withStyle(ChatFormatting.UNDERLINE))
+                        .append(data.component().copy().withStyle(ChatFormatting.UNDERLINE))
                         .append(type);
             }
         };
@@ -84,13 +85,13 @@ public abstract class ChapterImageButtonMixin {
                     target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;getClick()Ljava/lang/String;"
             )
     )
-    private String ftb_paste_image$hide_text_click(ChapterImage image, MouseButton button) {
-        return ChapterCanvasText.getText(image).isPresent() ? "" : image.getClick();
+    private String quest_enhance$hide_text_click(ChapterImage image, MouseButton button) {
+        return ChapterCanvasText.getTextData(image).isPresent() ? "" : image.getClick();
     }
 
     // 用保持原始宽高比的文字替换空图片绘制
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
-    private void ftb_paste_image$draw_chapter_text(
+    private void quest_enhance$draw_chapter_text(
             GuiGraphics graphics,
             Theme theme,
             int x,
@@ -99,17 +100,19 @@ public abstract class ChapterImageButtonMixin {
             int height,
             CallbackInfo callback_info
     ) {
-        Optional<String> text = ChapterCanvasText.getText(this.chapterImage);
-        if (text.isEmpty()) {
+        Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
+        if (text_data.isEmpty()) {
             return;
         }
+        ChapterCanvasText.TextData data = text_data.get();
+        Component text = data.component();
 
         // 计算保持字体比例且完整放入当前画布框的缩放值
-        int text_width = Math.max(1, theme.getStringWidth(text.get()));
+        int text_width = Math.max(1, theme.getStringWidth(text));
         int text_height = Math.max(1, theme.getFontHeight());
         float scale = Math.max(0.001F, Math.min((float) width / text_width, (float) height / text_height));
         QuestScreenAccessor screen = (QuestScreenAccessor) (Object) this.questScreen;
-        boolean transparent = !this.chapterImage.shouldShowImage(screen.ftb_paste_image$get_file().selfTeamData);
+        boolean transparent = !this.chapterImage.shouldShowImage(screen.quest_enhance$get_file().selfTeamData);
         int alpha = transparent ? 100 : this.chapterImage.getAlpha();
         Color4I color = this.chapterImage.getColor().withAlpha(alpha);
 
@@ -120,17 +123,17 @@ public abstract class ChapterImageButtonMixin {
             pose_stack.translate(x, y, 0.0F);
             pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
             pose_stack.scale(scale, scale, 1.0F);
-            theme.drawString(graphics, text.get(), 0, 0, color, 2);
+            theme.drawString(graphics, text, 0, 0, color, 2);
         } else {
             pose_stack.translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
             pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
             pose_stack.scale(scale, scale, 1.0F);
-            theme.drawString(graphics, text.get(), -text_width / 2, -text_height / 2, color, 2);
+            theme.drawString(graphics, text, -text_width / 2, -text_height / 2, color, 2);
         }
         pose_stack.popPose();
 
         // 在编辑器中沿用图片对象的选中闪烁效果
-        if (screen.ftb_paste_image$get_selected_objects().contains(this.chapterImage)) {
+        if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
             int selection_alpha = (int) (45.0 + Math.sin(System.currentTimeMillis() * 0.003) * 20.0);
             Color4I.WHITE.withAlpha(selection_alpha).draw(graphics, x, y, width, height);
         }

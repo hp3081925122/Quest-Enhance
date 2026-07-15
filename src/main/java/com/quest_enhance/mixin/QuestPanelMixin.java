@@ -1,6 +1,6 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.client.ChapterCanvasText;
+import com.quest_enhance.client.ChapterCanvasText;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icons;
@@ -41,14 +41,14 @@ public abstract class QuestPanelMixin {
             ),
             index = 0
     )
-    private List<ContextMenuItem> ftb_paste_image$add_chapter_text_menu(List<ContextMenuItem> context_menu) {
+    private List<ContextMenuItem> quest_enhance$add_chapter_text_menu(List<ContextMenuItem> context_menu) {
         double x = this.questX;
         double y = this.questY;
-        Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).ftb_paste_image$get_selected_chapter();
+        Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
 
         // 打开单行文字输入框，并在确认后创建原生章节图片对象
         context_menu.add(new ContextMenuItem(
-                Component.translatable("ftb_paste_image.chapter_text"),
+                Component.translatable("quest_enhance.chapter_text"),
                 Icons.CHAT,
                 button -> {
                     StringConfig config = new StringConfig(Pattern.compile(".+"));
@@ -71,7 +71,7 @@ public abstract class QuestPanelMixin {
                                 }
                                 this.questScreen.openGui();
                             },
-                            Component.translatable("ftb_paste_image.chapter_text")
+                            Component.translatable("quest_enhance.chapter_text")
                     ).atMousePosition();
                     overlay.setWidth(180);
                     overlay.setExtraZlevel(600);

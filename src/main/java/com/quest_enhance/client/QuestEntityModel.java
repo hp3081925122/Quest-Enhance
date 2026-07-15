@@ -1,4 +1,4 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -13,8 +13,8 @@ import net.minecraft.world.item.SpawnEggItem;
 import java.util.Optional;
 
 public final class QuestEntityModel {
-    public static final ResourceLocation NONE = ResourceLocation.fromNamespaceAndPath("ftb_paste_image", "none");
-    private static final String ENTITY_MODEL_TAG = "ftb_paste_image_entity_model";
+    public static final ResourceLocation NONE = ResourceLocation.fromNamespaceAndPath("quest_enhance", "none");
+    private static final String ENTITY_MODEL_TAG = "quest_enhance_entity_model";
 
     private QuestEntityModel() {
     }

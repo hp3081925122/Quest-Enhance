@@ -1,6 +1,6 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.client.QuestEntityModel;
+import com.quest_enhance.client.QuestEntityModel;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftblibrary.config.NameMap;
@@ -27,9 +27,9 @@ import java.util.List;
 public abstract class QuestConfigMixin {
     // 在原生图标配置下方增加可持久化的实体模型选择项
     @Inject(method = "fillConfigGroup", at = @At("TAIL"))
-    private void ftb_paste_image$add_entity_model_config(ConfigGroup config, CallbackInfo callback_info) {
+    private void quest_enhance$add_entity_model_config(ConfigGroup config, CallbackInfo callback_info) {
         Quest quest = (Quest) (Object) this;
-        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) quest).ftb_paste_image$get_raw_icon();
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
         ResourceLocation initial_model = QuestEntityModel.getEntityModel(raw_icon).orElse(QuestEntityModel.NONE);
 
         // 构建“无”和全部实体注册名组成的原生枚举选择器
@@ -38,7 +38,7 @@ public abstract class QuestConfigMixin {
         entity_ids.addAll(BuiltInRegistries.ENTITY_TYPE.keySet());
         NameMap<ResourceLocation> entity_models = NameMap.of(QuestEntityModel.NONE, entity_ids)
                 .name(entity_id -> entity_id.equals(QuestEntityModel.NONE)
-                        ? Component.translatable("ftb_paste_image.none")
+                        ? Component.translatable("quest_enhance.none")
                         : Component.translatable("entity." + entity_id.getNamespace() + "." + entity_id.getPath()))
                 .icon(entity_id -> {
                     if (entity_id.equals(QuestEntityModel.NONE)) {
@@ -58,7 +58,7 @@ public abstract class QuestConfigMixin {
             }
 
             if (selected_model.equals(QuestEntityModel.NONE)) {
-                ItemStack current_icon = ((QuestObjectBaseAccessor) (Object) quest).ftb_paste_image$get_raw_icon();
+                ItemStack current_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
                 if (QuestEntityModel.getEntityModel(current_icon).isPresent()) {
                     quest.setRawIcon(ItemStack.EMPTY);
                 }
@@ -67,7 +67,7 @@ public abstract class QuestConfigMixin {
             }
             quest.clearCachedData();
         }, entity_models, QuestEntityModel.NONE)
-                .setNameKey("ftb_paste_image.quest_model")
+                .setNameKey("quest_enhance.quest_model")
                 .setOrder(-125);
 
         // 给模型项腾出图标下方的位置，并保持标签和后续字段的原有相对顺序

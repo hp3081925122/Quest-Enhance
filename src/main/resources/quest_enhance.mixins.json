@@ -1,9 +1,9 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.ftb_paste_image.mixin",
+  "package": "com.quest_enhance.mixin",
   "compatibilityLevel": "JAVA_17",
-  "refmap": "ftb_paste_image.refmap.json",
+  "refmap": "quest_enhance.refmap.json",
   "mixins": [],
   "client": [
     "ChapterImageAccessor",

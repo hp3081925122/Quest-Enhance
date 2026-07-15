@@ -1,4 +1,4 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
 import com.sun.jna.Native;
 import com.sun.jna.Platform;

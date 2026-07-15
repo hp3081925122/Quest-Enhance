@@ -1,4 +1,4 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.resources.ResourceLocation;
@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface KillTaskAccessor {
     // 读取击杀任务当前配置的实体注册名
     @Accessor("entity")
-    ResourceLocation ftb_paste_image$get_entity();
+    ResourceLocation quest_enhance$get_entity();
 }

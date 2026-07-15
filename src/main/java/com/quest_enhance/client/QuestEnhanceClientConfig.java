@@ -1,8 +1,8 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 
-public final class FtbPasteImageClientConfig {
+public final class QuestEnhanceClientConfig {
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.BooleanValue RENDER_KILL_TASK_ENTITY_MODELS;
 
@@ -14,6 +14,6 @@ public final class FtbPasteImageClientConfig {
         SPEC = builder.build();
     }
 
-    private FtbPasteImageClientConfig() {
+    private QuestEnhanceClientConfig() {
     }
 }

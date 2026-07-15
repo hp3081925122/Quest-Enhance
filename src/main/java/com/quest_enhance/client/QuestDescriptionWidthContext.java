@@ -1,4 +1,4 @@
-package com.ftb_paste_image.client;
+package com.quest_enhance.client;
 
 public final class QuestDescriptionWidthContext {
     private static int pending_content_width;

@@ -1,8 +1,8 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.FtbPasteImage;
-import com.ftb_paste_image.client.QuestDescriptionWidthContext;
-import com.ftb_paste_image.client.WindowsClipboardImage;
+import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.QuestDescriptionWidthContext;
+import com.quest_enhance.client.WindowsClipboardImage;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.ftb.mods.ftblibrary.config.ConfigCallback;
 import dev.ftb.mods.ftblibrary.config.ListConfig;
@@ -37,7 +37,7 @@ import java.nio.file.Path;
 @Mixin(value = MultilineTextEditorScreen.class, remap = false)
 public abstract class MultilineTextEditorScreenMixin {
     @Unique
-    private int ftb_paste_image$description_content_width;
+    private int quest_enhance$description_content_width;
 
     @Shadow
     @Final
@@ -45,39 +45,39 @@ public abstract class MultilineTextEditorScreenMixin {
 
     // 复用 FTB Quests 原有的行末图片组件插入行为
     @Invoker("insertAtEndOfLine")
-    protected abstract void ftb_paste_image$insert_at_end_of_line(String text);
+    protected abstract void quest_enhance$insert_at_end_of_line(String text);
 
     // 接收任务节点介绍面板的内容宽度，其他多行编辑器保持原有默认尺寸
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void ftb_paste_image$receive_description_width(
+    private void quest_enhance$receive_description_width(
             Component title,
             ListConfig<String, StringConfig> config,
             ConfigCallback callback,
             CallbackInfo callback_info
     ) {
-        this.ftb_paste_image$description_content_width = QuestDescriptionWidthContext.consume();
+        this.quest_enhance$description_content_width = QuestDescriptionWidthContext.consume();
     }
 
     // 打开 FTB 原生图片选择器时绑定当前任务介绍内容宽度
     @Inject(method = "openImageSelector", at = @At("HEAD"))
-    private void ftb_paste_image$activate_description_width(CallbackInfo callback_info) {
+    private void quest_enhance$activate_description_width(CallbackInfo callback_info) {
         QuestDescriptionWidthContext.activate(
-                this.ftb_paste_image$description_content_width > 0
-                        ? this.ftb_paste_image$description_content_width
+                this.quest_enhance$description_content_width > 0
+                        ? this.quest_enhance$description_content_width
                         : 100
         );
     }
 
     // 把描述编辑器中新建图片组件的自适应选项默认设为开启
     @ModifyVariable(method = "openImageSelector", at = @At("STORE"), ordinal = 0)
-    private ImageComponent ftb_paste_image$enable_fit_by_default(ImageComponent component) {
+    private ImageComponent quest_enhance$enable_fit_by_default(ImageComponent component) {
         component.fit = true;
         return component;
     }
 
     // 在任务描述文本框聚焦时优先处理剪贴板图片
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void ftb_paste_image$paste_clipboard_image(Key key, CallbackInfoReturnable<Boolean> callback_info) {
+    private void quest_enhance$paste_clipboard_image(Key key, CallbackInfoReturnable<Boolean> callback_info) {
         if (!this.textBox.isFocused() || !key.paste()) {
             return;
         }
@@ -90,7 +90,7 @@ public abstract class MultilineTextEditorScreenMixin {
                 return;
             }
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to read a clipboard image", exception);
+            QuestEnhance.LOGGER.error("Failed to read a clipboard image", exception);
             return;
         }
 
@@ -101,9 +101,9 @@ public abstract class MultilineTextEditorScreenMixin {
             // 把图片写入模组自己的配置资源目录
             Minecraft minecraft = Minecraft.getInstance();
             Path output_directory = FMLPaths.CONFIGDIR.get()
-                    .resolve(FtbPasteImage.MOD_ID)
+                    .resolve(QuestEnhance.MOD_ID)
                     .resolve("assets")
-                    .resolve(FtbPasteImage.MOD_ID)
+                    .resolve(QuestEnhance.MOD_ID)
                     .resolve("textures")
                     .resolve("ftb");
             Files.createDirectories(output_directory);
@@ -116,7 +116,7 @@ public abstract class MultilineTextEditorScreenMixin {
 
             // 动态注册刚保存的纹理，避免粘贴一次就重载整个资源包
             ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
-                    FtbPasteImage.MOD_ID,
+                    QuestEnhance.MOD_ID,
                     "textures/ftb/" + file_name
             );
             try (InputStream input_stream = Files.newInputStream(output_path)) {
@@ -125,19 +125,19 @@ public abstract class MultilineTextEditorScreenMixin {
             }
 
             // 按任务介绍区宽度和原图比例计算图片组件尺寸
-            int image_width = this.ftb_paste_image$description_content_width > 0
-                    ? this.ftb_paste_image$description_content_width
+            int image_width = this.quest_enhance$description_content_width > 0
+                    ? this.quest_enhance$description_content_width
                     : 100;
             int image_height = QuestDescriptionWidthContext.calculateHeight(
                     image_width,
                     buffered_image.getWidth(),
                     buffered_image.getHeight()
             );
-            this.ftb_paste_image$insert_at_end_of_line("\n{image:" + resource_location
+            this.quest_enhance$insert_at_end_of_line("\n{image:" + resource_location
                     + " width:" + image_width + " height:" + image_height + " align:center fit:true}");
-            FtbPasteImage.LOGGER.info("Pasted clipboard image to {}", output_path);
+            QuestEnhance.LOGGER.info("Pasted clipboard image to {}", output_path);
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to paste clipboard image", exception);
+            QuestEnhance.LOGGER.error("Failed to paste clipboard image", exception);
         }
     }
 }

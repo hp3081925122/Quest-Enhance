@@ -1,8 +1,8 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.client.FtbPasteImageClientConfig;
-import com.ftb_paste_image.client.KillTaskEntityPreview;
-import com.ftb_paste_image.client.QuestEntityModel;
+import com.quest_enhance.client.QuestEnhanceClientConfig;
+import com.quest_enhance.client.KillTaskEntityPreview;
+import com.quest_enhance.client.QuestEntityModel;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
@@ -27,7 +27,7 @@ public abstract class QuestButtonMixin {
     Quest quest;
 
     @Unique
-    private KillTaskEntityPreview ftb_paste_image$entity_preview;
+    private KillTaskEntityPreview quest_enhance$entity_preview;
 
     // 阻止原图标绘制，为手动模型或自动击杀任务模型保留节点中央区域
     @Redirect(
@@ -38,8 +38,8 @@ public abstract class QuestButtonMixin {
                     ordinal = 0
             )
     )
-    private boolean ftb_paste_image$hide_replaced_icon(Icon icon) {
-        return this.ftb_paste_image$get_entity_model() != null || icon.isEmpty();
+    private boolean quest_enhance$hide_replaced_icon(Icon icon) {
+        return this.quest_enhance$get_entity_model() != null || icon.isEmpty();
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
@@ -51,7 +51,7 @@ public abstract class QuestButtonMixin {
                     shift = At.Shift.BEFORE
             )
     )
-    private void ftb_paste_image$draw_quest_entity_model(
+    private void quest_enhance$draw_quest_entity_model(
             GuiGraphics graphics,
             Theme theme,
             int x,
@@ -60,14 +60,14 @@ public abstract class QuestButtonMixin {
             int height,
             CallbackInfo callback_info
     ) {
-        ResourceLocation entity_id = this.ftb_paste_image$get_entity_model();
+        ResourceLocation entity_id = this.quest_enhance$get_entity_model();
         if (entity_id == null) {
             return;
         }
 
         // 按 FTB 原节点图标缩放规则计算模型占用区域
-        if (this.ftb_paste_image$entity_preview == null) {
-            this.ftb_paste_image$entity_preview = new KillTaskEntityPreview();
+        if (this.quest_enhance$entity_preview == null) {
+            this.quest_enhance$entity_preview = new KillTaskEntityPreview();
         }
         int model_size = Math.max(1, Math.min(
                 Math.min(width, height),
@@ -75,7 +75,7 @@ public abstract class QuestButtonMixin {
         ));
         int model_x = x + (width - model_size) / 2;
         int model_y = y + (height - model_size) / 2;
-        this.ftb_paste_image$entity_preview.render(
+        this.quest_enhance$entity_preview.render(
                 entity_id,
                 graphics,
                 model_x,
@@ -87,12 +87,12 @@ public abstract class QuestButtonMixin {
 
     // 手动模型优先，普通自定义图标次之，最后使用单个击杀任务的目标实体
     @Unique
-    private ResourceLocation ftb_paste_image$get_entity_model() {
-        if (!FtbPasteImageClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()) {
+    private ResourceLocation quest_enhance$get_entity_model() {
+        if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()) {
             return null;
         }
 
-        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).ftb_paste_image$get_raw_icon();
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
         ResourceLocation explicit_model = QuestEntityModel.getEntityModel(raw_icon).orElse(null);
         if (explicit_model != null) {
             return explicit_model;
@@ -102,7 +102,7 @@ public abstract class QuestButtonMixin {
         }
 
         return this.quest.getTasks().iterator().next() instanceof KillTask kill_task
-                ? ((KillTaskAccessor) kill_task).ftb_paste_image$get_entity()
+                ? ((KillTaskAccessor) kill_task).quest_enhance$get_entity()
                 : null;
     }
 }

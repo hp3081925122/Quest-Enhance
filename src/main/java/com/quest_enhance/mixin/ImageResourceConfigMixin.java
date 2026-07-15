@@ -1,7 +1,7 @@
-package com.ftb_paste_image.mixin;
+package com.quest_enhance.mixin;
 
-import com.ftb_paste_image.FtbPasteImage;
-import com.ftb_paste_image.client.QuestDescriptionWidthContext;
+import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.QuestDescriptionWidthContext;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
@@ -23,7 +23,7 @@ import java.io.InputStream;
 public abstract class ImageResourceConfigMixin {
     // 在 FTB Quests 原生选择器选中图片后同步更新同组宽高配置
     @Inject(method = "setResource", at = @At("RETURN"))
-    private void ftb_paste_image$apply_native_image_size(
+    private void quest_enhance$apply_native_image_size(
             SelectableResource<ResourceLocation> selected_resource,
             CallbackInfoReturnable<Boolean> callback_info
     ) {
@@ -72,7 +72,7 @@ public abstract class ImageResourceConfigMixin {
                 ));
             }
         } catch (IOException | RuntimeException exception) {
-            FtbPasteImage.LOGGER.error("Failed to read selected FTB Quests image dimensions {}", image_location, exception);
+            QuestEnhance.LOGGER.error("Failed to read selected FTB Quests image dimensions {}", image_location, exception);
         }
     }
 }
