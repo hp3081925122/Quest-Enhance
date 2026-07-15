@@ -49,7 +49,7 @@ public abstract class ChapterImageButtonMixin {
         ChapterImageButton button = (ChapterImageButton) (Object) this;
         ConfigGroup group = new ConfigGroup("ftbquests", accepted -> {
             if (accepted) {
-                new EditObjectMessage(this.chapterImage.getChapter()).sendToServer();
+                EditObjectMessage.sendToServer(this.chapterImage.getChapter());
             }
             button.run();
         }) {

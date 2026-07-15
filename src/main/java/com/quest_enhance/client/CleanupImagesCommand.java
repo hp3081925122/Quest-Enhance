@@ -7,11 +7,11 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterClientCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-@Mod.EventBusSubscriber(modid = QuestEnhance.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = QuestEnhance.MOD_ID, value = Dist.CLIENT)
 public final class CleanupImagesCommand {
     private static final Pattern GENERATED_IMAGE_PATTERN = Pattern.compile("clipboard_[0-9]+\\.png");
     private static final Pattern IMAGE_REFERENCE_PATTERN = Pattern.compile(

@@ -56,13 +56,15 @@ public final class KillTaskEntityPreview {
         float scale_by_height = height * 0.85F / Math.max(this.cached_entity.getBbHeight(), 0.25F);
         int scale = Math.max(1, (int) Math.floor(Math.min(scale_by_width, scale_by_height)));
 
-        graphics.enableScissor(x, y, x + width, y + height);
         try {
             InventoryScreen.renderEntityInInventoryFollowsAngle(
                     graphics,
-                    x + width / 2,
+                    x,
+                    y,
+                    x + width,
                     y + height,
                     scale,
+                    0.0F,
                     0.35F,
                     -0.1F,
                     this.cached_entity
@@ -72,8 +74,6 @@ public final class KillTaskEntityPreview {
             this.cached_entity = null;
             QuestEnhance.LOGGER.error("Failed to render entity preview {}", entity_id, exception);
             return false;
-        } finally {
-            graphics.disableScissor();
         }
     }
 }

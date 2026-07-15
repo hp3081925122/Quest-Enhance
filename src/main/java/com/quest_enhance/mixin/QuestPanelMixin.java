@@ -67,7 +67,7 @@ public abstract class QuestPanelMixin {
                                             this.questScreen.getTheme()
                                     );
                                     chapter.addImage(image);
-                                    new EditObjectMessage(chapter).sendToServer();
+                                    EditObjectMessage.sendToServer(chapter);
                                 }
                                 this.questScreen.openGui();
                             },

@@ -3,21 +3,26 @@ package com.quest_enhance;
 import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.repository.BuiltInPackSource;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.resource.PathPackResources;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 // 提供模组标识和统一日志入口
 @Mod(QuestEnhance.MOD_ID)
@@ -26,13 +31,13 @@ public final class QuestEnhance {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     // 注册客户端配置目录资源包事件
-    public QuestEnhance(FMLJavaModLoadingContext loading_context) {
-        loading_context.registerConfig(
+    public QuestEnhance(IEventBus mod_event_bus, ModContainer mod_container) {
+        mod_container.registerConfig(
                 ModConfig.Type.CLIENT,
                 QuestEnhanceClientConfig.SPEC,
                 MOD_ID + "-client.toml"
         );
-        loading_context.getModEventBus().addListener(this::addPackFinder);
+        mod_event_bus.addListener(this::addPackFinder);
     }
 
     // 将配置目录中的图片作为必选客户端资源包加载
@@ -52,7 +57,7 @@ public final class QuestEnhance {
             Files.createDirectories(image_directory);
             Files.writeString(
                     pack_root.resolve("pack.mcmeta"),
-                    "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.quest_enhance.description\"\n    },\n    \"pack_format\": 15\n  }\n}\n",
+                    "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.quest_enhance.description\"\n    },\n    \"pack_format\": 34\n  }\n}\n",
                     StandardCharsets.UTF_8
             );
         } catch (IOException exception) {
@@ -62,14 +67,17 @@ public final class QuestEnhance {
 
         // 把配置目录资源包加入客户端资源仓库并保持启用
         event.addRepositorySource(pack_consumer -> {
-            Pack pack = Pack.readMetaAndCreate(
+            PackLocationInfo pack_location = new PackLocationInfo(
                     MOD_ID,
                     Component.translatable("pack.quest_enhance.name"),
-                    true,
-                    pack_id -> new PathPackResources(pack_id, true, pack_root),
+                    PackSource.BUILT_IN,
+                    Optional.empty()
+            );
+            Pack pack = Pack.readMetaAndCreate(
+                    pack_location,
+                    BuiltInPackSource.fromName(location -> new PathPackResources(location, pack_root)),
                     PackType.CLIENT_RESOURCES,
-                    Pack.Position.TOP,
-                    PackSource.BUILT_IN
+                    new PackSelectionConfig(true, Pack.Position.TOP, false)
             );
             if (pack != null) {
                 pack_consumer.accept(pack);

@@ -1,5 +1,6 @@
 package com.quest_enhance.client;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -9,6 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.item.component.CustomData;
 
 import java.util.Optional;
 
@@ -21,8 +23,8 @@ public final class QuestEntityModel {
 
     // 从 FTB 原有图标物品的自定义 NBT 中读取模型实体注册名
     public static Optional<ResourceLocation> getEntityModel(ItemStack icon_stack) {
-        CompoundTag tag = icon_stack.getTag();
-        if (tag == null || !tag.contains(ENTITY_MODEL_TAG, Tag.TAG_STRING)) {
+        CompoundTag tag = icon_stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains(ENTITY_MODEL_TAG, Tag.TAG_STRING)) {
             return Optional.empty();
         }
 
@@ -35,7 +37,11 @@ public final class QuestEntityModel {
         SpawnEggItem spawn_egg = entity_type == null ? null : SpawnEggItem.byId(entity_type);
         Item item = spawn_egg == null ? Items.BARRIER : spawn_egg;
         ItemStack icon_stack = new ItemStack(item);
-        icon_stack.getOrCreateTag().putString(ENTITY_MODEL_TAG, entity_id.toString());
+        CustomData.update(
+                DataComponents.CUSTOM_DATA,
+                icon_stack,
+                tag -> tag.putString(ENTITY_MODEL_TAG, entity_id.toString())
+        );
         return icon_stack;
     }
 }

@@ -30,7 +30,7 @@ public abstract class ViewQuestPanelMixin {
     ) {
         QuestDescriptionWidthContext.activate(this.panelText.getWidth());
         if (line == -1) {
-            component.fit = true;
+            component.setFit(true);
         }
     }
 }

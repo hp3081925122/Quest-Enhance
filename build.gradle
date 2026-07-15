@@ -1,61 +1,18 @@
-buildscript {
-    repositories {
-        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-    }
-}
-
 plugins {
-    id 'eclipse'
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.141'
     id 'idea'
-    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
-apply plugin: 'org.spongepowered.mixin'
-
-group = mod_group_id
 version = mod_version
+group = mod_group_id
 
 base {
     archivesName = mod_id
 }
 
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(17)
-}
-
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
-    copyIdeResources = true
-
-    runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        client {}
-
-        server {
-            args '--nogui'
-        }
-    }
-}
-
-mixin {
-    add sourceSets.main, "${mod_id}.refmap.json"
-    config "${mod_id}.mixins.json"
-}
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
@@ -66,34 +23,67 @@ repositories {
     maven { url = 'https://maven.architectury.dev/' }
 }
 
-dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    compileOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-    compileOnly("dev.ftb.mods:ftb-library-forge:${ftb_library_version}") {
-        transitive = false
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
     }
-    compileOnly("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}") {
-        transitive = false
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
     }
-    runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-    runtimeOnly(fg.deobf("dev.ftb.mods:ftb-library-forge:${ftb_library_version}")) {
-        transitive = false
-    }
-    runtimeOnly(fg.deobf("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}")) {
-        transitive = false
-    }
-    runtimeOnly(fg.deobf("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}")) {
-        transitive = false
-    }
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
-tasks.named('processResources', ProcessResources).configure {
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    compileOnly("dev.architectury:architectury-neoforge:${architectury_version}") {
+        transitive = false
+    }
+    compileOnly("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}") {
+        transitive = false
+    }
+    compileOnly("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
+        transitive = false
+    }
+
+    localRuntime("dev.architectury:architectury-neoforge:${architectury_version}") {
+        transitive = false
+    }
+    localRuntime("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}") {
+        transitive = false
+    }
+    localRuntime("dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}") {
+        transitive = false
+    }
+    localRuntime("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
+        transitive = false
+    }
+}
+
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def replace_properties = [
             minecraft_version       : minecraft_version,
             minecraft_version_range : minecraft_version_range,
-            forge_version           : forge_version,
-            forge_version_range     : forge_version_range,
+            neo_version             : neo_version,
+            neo_version_range       : neo_version_range,
             loader_version_range    : loader_version_range,
             mod_id                  : mod_id,
             mod_name                : mod_name,
@@ -105,28 +95,25 @@ tasks.named('processResources', ProcessResources).configure {
 
     inputs.properties replace_properties
     filteringCharset = 'UTF-8'
-
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replace_properties + [project: project]
-    }
+    expand replace_properties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
 }
 
-tasks.named('jar', Jar).configure {
-    manifest {
-        attributes([
-                'Specification-Title'       : mod_id,
-                'Specification-Vendor'      : mod_authors,
-                'Specification-Version'     : '1',
-                'Implementation-Title'      : project.name,
-                'Implementation-Version'    : project.jar.archiveVersion,
-                'Implementation-Vendor'     : mod_authors,
-                'Implementation-Timestamp'  : new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
-    }
-
-    finalizedBy 'reobfJar'
-}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.withType(JavaExec).configureEach {
+    modularity.inferModulePath = false
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
 }

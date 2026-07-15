@@ -7,7 +7,7 @@ import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
 import dev.ftb.mods.ftblibrary.config.IntConfig;
-import dev.ftb.mods.ftblibrary.config.ui.SelectableResource;
+import dev.ftb.mods.ftblibrary.config.ui.resource.SelectableResource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -57,7 +57,7 @@ public abstract class ImageResourceConfigMixin {
         }
 
         // 从当前客户端资源包读取图片原始尺寸并更新配置界面中的数值
-        ResourceLocation image_location = selected_resource.stack();
+        ResourceLocation image_location = selected_resource.resource();
         try {
             Resource resource = Minecraft.getInstance()
                     .getResourceManager()

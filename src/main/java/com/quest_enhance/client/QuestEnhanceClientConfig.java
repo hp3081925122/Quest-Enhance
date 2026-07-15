@@ -1,13 +1,13 @@
 package com.quest_enhance.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class QuestEnhanceClientConfig {
-    public static final ForgeConfigSpec SPEC;
-    public static final ForgeConfigSpec.BooleanValue RENDER_KILL_TASK_ENTITY_MODELS;
+    public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.BooleanValue RENDER_KILL_TASK_ENTITY_MODELS;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         RENDER_KILL_TASK_ENTITY_MODELS = builder
                 .comment("使用生物模型替代击杀实体任务的刷怪蛋图标")
                 .define("render_kill_task_entity_models", true);

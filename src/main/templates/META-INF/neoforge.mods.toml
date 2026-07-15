@@ -10,23 +10,26 @@ authors = "${mod_authors}"
 displayTest = "IGNORE_ALL_VERSION"
 description = '''为 FTB Quests 提供剪贴板图片粘贴、章节画布文字和任务实体模型显示等编辑增强功能。'''
 
-[[dependencies."${mod_id}"]]
-modId = "forge"
-mandatory = true
-versionRange = "${forge_version_range}"
+[[mixins]]
+config = "${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
 ordering = "NONE"
 side = "CLIENT"
 
-[[dependencies."${mod_id}"]]
+[[dependencies.${mod_id}]]
 modId = "minecraft"
-mandatory = true
+type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "CLIENT"
 
-[[dependencies."${mod_id}"]]
+[[dependencies.${mod_id}]]
 modId = "ftbquests"
-mandatory = true
+type = "required"
 versionRange = "[${ftb_quests_version},)"
 ordering = "AFTER"
 side = "CLIENT"
