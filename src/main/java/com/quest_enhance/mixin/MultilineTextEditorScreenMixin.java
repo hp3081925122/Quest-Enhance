@@ -1,5 +1,7 @@
 package com.quest_enhance.mixin;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonParser;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.MultilineTextEditorAccess;
 import com.quest_enhance.client.QuestDescriptionWidthContext;
@@ -9,12 +11,16 @@ import dev.ftb.mods.ftblibrary.config.ConfigCallback;
 import dev.ftb.mods.ftblibrary.config.ListConfig;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.ui.MultilineTextBox;
+import dev.ftb.mods.ftblibrary.ui.MultilineTextBox.StringExtents;
 import dev.ftb.mods.ftblibrary.ui.input.Key;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
+import dev.ftb.mods.ftbquests.client.FTBQuestsClient;
 import dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Whence;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Component.Serializer;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.loading.FMLPaths;
 import org.spongepowered.asm.mixin.Final;
@@ -48,6 +54,72 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
     @Invoker("insertAtEndOfLine")
     @Override
     public abstract void quest_enhance$insert_at_end_of_line(String text);
+
+    // 只允许快捷组件处理不跨行的选择内容
+    @Override
+    public boolean quest_enhance$has_single_line_selection() {
+        return this.textBox.hasSelection() && !this.textBox.getSelectedText().contains("\n");
+    }
+
+    // 为快捷组件配置页提供当前选择文字
+    @Override
+    public String quest_enhance$get_selected_text() {
+        return this.quest_enhance$has_single_line_selection()
+                ? this.textBox.getSelectedText()
+                : "";
+    }
+
+    // 把原版文字组件安全写入任务描述，并保留选择内容所在行的前后文字
+    @Override
+    public void quest_enhance$insert_component(Component component) {
+        String serialized = Serializer.toJson(component, FTBQuestsClient.holderLookup());
+        if (!this.quest_enhance$has_single_line_selection()) {
+            this.quest_enhance$insert_at_end_of_line("\n" + serialized);
+            return;
+        }
+
+        // 读取当前选择所在的完整物理行
+        String editor_text = this.textBox.getText();
+        StringExtents selection = this.textBox.getSelected();
+        int line_start = editor_text.lastIndexOf('\n', selection.start() - 1) + 1;
+        int next_line = editor_text.indexOf('\n', selection.end());
+        int line_end = next_line < 0 ? editor_text.length() : next_line;
+        String line = editor_text.substring(line_start, line_end);
+
+        // 已是 JSON 的行无法可靠映射原始字符选择，改为追加新行
+        if ((line.startsWith("{") || line.startsWith("["))
+                && (line.endsWith("}") || line.endsWith("]"))) {
+            this.quest_enhance$insert_at_end_of_line("\n" + serialized);
+            return;
+        }
+
+        // 使用组件序列化结果构造数组，避免引号与特殊字符损坏 JSON
+        JsonArray parts = new JsonArray();
+        String before = editor_text.substring(line_start, selection.start());
+        String after = editor_text.substring(selection.end(), line_end);
+        if (!before.isEmpty()) {
+            parts.add(JsonParser.parseString(Serializer.toJson(
+                    Component.literal(before),
+                    FTBQuestsClient.holderLookup()
+            )));
+        }
+        parts.add(JsonParser.parseString(serialized));
+        if (!after.isEmpty()) {
+            parts.add(JsonParser.parseString(Serializer.toJson(
+                    Component.literal(after),
+                    FTBQuestsClient.holderLookup()
+            )));
+        }
+
+        // 按 FTB 编辑器的选择替换方式更新整行并恢复焦点
+        this.textBox.setSelecting(false);
+        this.textBox.seekCursor(Whence.ABSOLUTE, line_start);
+        this.textBox.setSelecting(true);
+        this.textBox.seekCursor(Whence.ABSOLUTE, line_end);
+        this.textBox.insertText(parts.toString());
+        this.textBox.setSelecting(false);
+        this.textBox.setFocused(true);
+    }
 
     // 接收任务节点介绍面板的内容宽度，其他多行编辑器保持原有默认尺寸
     @Inject(method = "<init>", at = @At("RETURN"))
