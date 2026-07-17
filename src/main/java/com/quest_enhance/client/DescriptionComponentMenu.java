@@ -13,6 +13,7 @@ import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent.ImageAlign;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -419,18 +420,61 @@ public final class DescriptionComponentMenu {
             MultilineTextEditorAccess editor,
             ItemStack selected_stack
     ) {
-        int[] width = {18};
-        int[] height = {18};
-        ImageAlign[] align = {ImageAlign.CENTER};
-        boolean[] fit = {false};
-        String[] hover_text = {selected_stack.getHoverName().getString()};
-
         // 图标只保存物品类型，避免把背包物品的临时 NBT 写入任务描述
         ItemStack icon_stack = new ItemStack(selected_stack.getItem());
+        openItemIconConfig(
+                parent,
+                ItemIcon.getItemIcon(icon_stack).toString(),
+                18,
+                18,
+                ImageAlign.CENTER,
+                false,
+                selected_stack.getHoverName().getString(),
+                markup -> editor.quest_enhance$insert_at_end_of_line("\n" + markup)
+        );
+    }
+
+    // 编辑已有物品图片时保留物品图标类型和当前布局参数
+    public static void editItemIcon(
+            Panel parent,
+            ImageComponent component,
+            String hover_text,
+            Consumer<String> save
+    ) {
+        openItemIconConfig(
+                parent,
+                component.image.toString(),
+                component.width,
+                component.height,
+                component.align,
+                component.fit,
+                hover_text,
+                save
+        );
+    }
+
+    // 统一承载新建和编辑物品图标，避免原生图片选择器丢失 item 图标
+    private static void openItemIconConfig(
+            Panel parent,
+            String item_icon,
+            int initial_width,
+            int initial_height,
+            ImageAlign initial_align,
+            boolean initial_fit,
+            String initial_hover_text,
+            Consumer<String> save
+    ) {
+        int[] width = {initial_width};
+        int[] height = {initial_height};
+        ImageAlign[] align = {initial_align};
+        boolean[] fit = {initial_fit};
+        String[] hover_text = {initial_hover_text};
+
+        // 物品图标继续使用 FTB 原生图片标记，不改变任务描述格式
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
-                editor.quest_enhance$insert_at_end_of_line("\n" + imageMarkup(
-                        ItemIcon.getItemIcon(icon_stack).toString(),
+                save.accept(imageMarkup(
+                        item_icon,
                         width[0],
                         height[0],
                         align[0],
@@ -501,15 +545,59 @@ public final class DescriptionComponentMenu {
 
     // 配置由 FTB URLImageIcon 加载的网络图片
     private static void openRemoteImageConfig(Panel parent, MultilineTextEditorAccess editor) {
-        String[] url = {"https://example.com/image.png"};
-        int[] width = {100};
-        int[] height = {100};
-        ImageAlign[] align = {ImageAlign.CENTER};
-        boolean[] fit = {true};
-        String[] hover_text = {""};
+        openRemoteImageConfig(
+                parent,
+                "https://example.com/image.png",
+                100,
+                100,
+                ImageAlign.CENTER,
+                true,
+                "",
+                markup -> editor.quest_enhance$insert_at_end_of_line("\n" + markup)
+        );
+    }
+
+    // 编辑已有网络图片时保留网址和当前布局参数
+    public static void editRemoteImage(
+            Panel parent,
+            ImageComponent component,
+            String hover_text,
+            Consumer<String> save
+    ) {
+        openRemoteImageConfig(
+                parent,
+                component.image.toString(),
+                component.width,
+                component.height,
+                component.align,
+                component.fit,
+                hover_text,
+                save
+        );
+    }
+
+    // 统一承载新建和编辑网络图片，避免原生纹理选择器丢失网址
+    private static void openRemoteImageConfig(
+            Panel parent,
+            String initial_url,
+            int initial_width,
+            int initial_height,
+            ImageAlign initial_align,
+            boolean initial_fit,
+            String initial_hover_text,
+            Consumer<String> save
+    ) {
+        String[] url = {initial_url};
+        int[] width = {initial_width};
+        int[] height = {initial_height};
+        ImageAlign[] align = {initial_align};
+        boolean[] fit = {initial_fit};
+        String[] hover_text = {initial_hover_text};
+
+        // 网络图片继续使用 FTB 原生图片标记，不改变任务描述格式
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
-                editor.quest_enhance$insert_at_end_of_line("\n" + imageMarkup(
+                save.accept(imageMarkup(
                         url[0],
                         width[0],
                         height[0],
