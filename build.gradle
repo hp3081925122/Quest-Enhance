@@ -21,6 +21,7 @@ sourceSets.main.resources {
 repositories {
     maven { url = 'https://maven.ftb.dev/releases' }
     maven { url = 'https://maven.architectury.dev/' }
+    maven { url = 'https://api.modrinth.com/maven' }
 }
 
 neoForge {
@@ -63,6 +64,9 @@ dependencies {
     compileOnly("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
         transitive = false
     }
+    compileOnly("maven.modrinth:watermedia:${watermedia_version}") {
+        transitive = false
+    }
 
     localRuntime("dev.architectury:architectury-neoforge:${architectury_version}") {
         transitive = false
@@ -76,6 +80,9 @@ dependencies {
     localRuntime("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
         transitive = false
     }
+    localRuntime("maven.modrinth:watermedia:${watermedia_version}") {
+        transitive = false
+    }
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
@@ -85,6 +92,7 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             neo_version             : neo_version,
             neo_version_range       : neo_version_range,
             loader_version_range    : loader_version_range,
+            watermedia_version      : watermedia_version,
             mod_id                  : mod_id,
             mod_name                : mod_name,
             mod_license             : mod_license,

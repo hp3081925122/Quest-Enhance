@@ -1,6 +1,8 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.ChapterCanvasText;
+import com.quest_enhance.client.ChapterCanvasVideo;
+import com.quest_enhance.client.VideoSelectionScreen;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icons;
@@ -32,7 +34,7 @@ public abstract class QuestPanelMixin {
     @Shadow
     protected double questY;
 
-    // 在章节节点画布的空白处右键菜单中加入文字入口
+    // 在章节节点画布的空白处右键菜单中加入文字和视频入口
     @ModifyArg(
             method = "mousePressed",
             at = @At(
@@ -77,6 +79,18 @@ public abstract class QuestPanelMixin {
                     overlay.setExtraZlevel(600);
                     this.questScreen.pushModalPanel(overlay);
                 }
+        ));
+
+        // 输入视频相对路径，并在确认后创建十六比九的章节背景对象
+        context_menu.add(new ContextMenuItem(
+                Component.translatable("quest_enhance.chapter_video"),
+                Icons.CAMERA,
+                button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
+                    ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
+                    chapter.addImage(image);
+                    EditObjectMessage.sendToServer(chapter);
+                    this.questScreen.refreshQuestPanel();
+                })
         ));
         return context_menu;
     }

@@ -3,12 +3,18 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.quest_enhance.client.KillTaskEntityPreview;
 import com.quest_enhance.client.QuestEntityModel;
+import com.quest_enhance.client.QuestVideoData;
+import com.quest_enhance.client.VideoPlayerScreen;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.Theme;
+import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
@@ -39,7 +45,63 @@ public abstract class QuestButtonMixin {
             )
     )
     private boolean quest_enhance$hide_replaced_icon(Icon icon) {
-        return this.quest_enhance$get_entity_model() != null || icon.isEmpty();
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
+        return this.quest_enhance$get_entity_model() != null
+                || QuestVideoData.isPlaceholder(raw_icon)
+                || icon.isEmpty();
+    }
+
+    // 在配置了视频的任务节点右下角绘制独立播放区域
+    @Inject(method = "draw", at = @At("TAIL"))
+    private void quest_enhance$draw_video_button(
+            GuiGraphics graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
+        if (QuestVideoData.getVideo(raw_icon).isEmpty()) {
+            return;
+        }
+
+        int button_size = Math.max(8, Math.min(14, Math.min(width, height) / 2));
+        int button_x = x + width - button_size;
+        int button_y = y + height - button_size;
+        graphics.fill(button_x, button_y, button_x + button_size, button_y + button_size, 0xD0000000);
+        graphics.drawCenteredString(
+                Minecraft.getInstance().font,
+                Component.literal("▶"),
+                button_x + button_size / 2,
+                button_y + (button_size - 8) / 2,
+                0xFFFFFFFF
+        );
+    }
+
+    // 只拦截播放区域的普通左键，节点其余区域仍按 FTB 原逻辑打开任务
+    @Inject(method = "onClicked", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$open_quest_video(MouseButton mouse_button, CallbackInfo callback_info) {
+        if (!mouse_button.isLeft() || Screen.hasControlDown() || Screen.hasAltDown()) {
+            return;
+        }
+
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
+        String video_path = QuestVideoData.getVideo(raw_icon).orElse(null);
+        if (video_path == null) {
+            return;
+        }
+
+        QuestButton button = (QuestButton) (Object) this;
+        int button_size = Math.max(8, Math.min(14, Math.min(button.getWidth(), button.getHeight()) / 2));
+        int mouse_x = button.getMouseX();
+        int mouse_y = button.getMouseY();
+        if (mouse_x >= button.getX() + button.getWidth() - button_size
+                && mouse_y >= button.getY() + button.getHeight() - button_size) {
+            VideoPlayerScreen.open(video_path);
+            callback_info.cancel();
+        }
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
@@ -97,7 +159,8 @@ public abstract class QuestButtonMixin {
         if (explicit_model != null) {
             return explicit_model;
         }
-        if (!raw_icon.isEmpty() || this.quest.getTasks().size() != 1) {
+        if ((!raw_icon.isEmpty() && !QuestVideoData.isPlaceholder(raw_icon))
+                || this.quest.getTasks().size() != 1) {
             return null;
         }
 

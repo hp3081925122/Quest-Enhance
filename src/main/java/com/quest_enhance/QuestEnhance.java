@@ -1,6 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClientConfig;
+import com.quest_enhance.client.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
@@ -11,10 +12,12 @@ import net.minecraft.server.packs.repository.BuiltInPackSource;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 import org.slf4j.Logger;
 
@@ -38,6 +41,11 @@ public final class QuestEnhance {
                 MOD_ID + "-client.toml"
         );
         mod_event_bus.addListener(this::addPackFinder);
+
+        // 只在客户端模组总线上注册任务描述视频解析器
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            mod_event_bus.addListener(QuestDescriptionVideo::clientSetup);
+        }
     }
 
     // 将配置目录中的图片作为必选客户端资源包加载
@@ -53,8 +61,14 @@ public final class QuestEnhance {
                 .resolve(MOD_ID)
                 .resolve("textures")
                 .resolve("ftb");
+        Path video_directory = pack_root
+                .resolve("assets")
+                .resolve(MOD_ID)
+                .resolve("videos")
+                .resolve("ftb");
         try {
             Files.createDirectories(image_directory);
+            Files.createDirectories(video_directory);
             Files.writeString(
                     pack_root.resolve("pack.mcmeta"),
                     "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.quest_enhance.description\"\n    },\n    \"pack_format\": 34\n  }\n}\n",

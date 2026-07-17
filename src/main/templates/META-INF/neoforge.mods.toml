@@ -8,7 +8,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 displayTest = "IGNORE_ALL_VERSION"
-description = '''为 FTB Quests 提供剪贴板图片粘贴、章节画布文字和任务实体模型显示等编辑增强功能。'''
+description = '''为 FTB Quests 提供剪贴板图片粘贴、章节画布文字、任务实体模型显示和视频播放等编辑增强功能。'''
 
 [[mixins]]
 config = "${mod_id}.mixins.json"
@@ -31,5 +31,12 @@ side = "CLIENT"
 modId = "ftbquests"
 type = "required"
 versionRange = "[${ftb_quests_version},)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "watermedia"
+type = "required"
+versionRange = "[${watermedia_version},3.0.0)"
 ordering = "AFTER"
 side = "CLIENT"
