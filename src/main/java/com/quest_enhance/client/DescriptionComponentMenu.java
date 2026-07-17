@@ -33,6 +33,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -119,6 +120,15 @@ public final class DescriptionComponentMenu {
                         button -> openTextComponentConfig(parent, editor, TextAction.KEYBIND)
                 ),
                 new ContextMenuItem(
+                        Component.translatable("quest_enhance.description_component.table"),
+                        Icons.INV_IO,
+                        button -> QuestDescriptionTable.openConfig(
+                                parent,
+                                QuestDescriptionTable.defaultTable(),
+                                markup -> editor.quest_enhance$insert_at_end_of_line("\n" + markup)
+                        )
+                ),
+                new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.obfuscated"),
                         Icons.NOTES,
                         button -> openTextComponentConfig(parent, editor, TextAction.OBFUSCATED)
@@ -147,6 +157,12 @@ public final class DescriptionComponentMenu {
 
     // 识别独立的快捷 JSON 组件，并用与插入时相同的配置页编辑原值
     public static boolean edit(Panel parent, String raw_text, Consumer<String> save) {
+        Optional<QuestDescriptionTable.TableData> table = QuestDescriptionTable.decodeMarkup(raw_text);
+        if (table.isPresent()) {
+            QuestDescriptionTable.openConfig(parent, table.get(), save);
+            return true;
+        }
+
         JsonObject json;
         Component component;
         try {

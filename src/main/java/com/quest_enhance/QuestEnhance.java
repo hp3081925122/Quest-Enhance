@@ -1,6 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClientConfig;
+import com.quest_enhance.client.QuestDescriptionTable;
 import com.quest_enhance.client.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
@@ -45,6 +46,7 @@ public final class QuestEnhance {
         // 只在客户端模组总线上注册任务描述视频解析器
         if (FMLEnvironment.dist == Dist.CLIENT) {
             mod_event_bus.addListener(QuestDescriptionVideo::clientSetup);
+            mod_event_bus.addListener(QuestDescriptionTable::clientSetup);
         }
     }
 

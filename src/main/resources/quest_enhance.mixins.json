@@ -19,6 +19,8 @@
     "QuestPanelMixin",
     "QuestScreenAccessor",
     "TaskButtonMixin",
+    "TextFieldAccessor",
+    "TextFieldMixin",
     "ViewQuestPanelMixin"
   ],
   "injectors": {
