@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.QuestDescriptionTable;
 import com.quest_enhance.client.QuestDescriptionVideo;
 import com.quest_enhance.client.VideoPlayerScreen;
 import net.minecraft.network.chat.ClickEvent;
@@ -24,6 +25,11 @@ public abstract class QuestDescriptionFieldMixin {
 
         ClickEvent click_event = style.getClickEvent();
         String click_value = click_event.getValue();
+        if (click_event.getAction() == ClickEvent.Action.CHANGE_PAGE
+                && click_value.startsWith(QuestDescriptionTable.CLICK_PREFIX)) {
+            callback_info.setReturnValue(true);
+            return;
+        }
         if (click_event.getAction() != ClickEvent.Action.CHANGE_PAGE
                 || !click_value.startsWith(QuestDescriptionVideo.CLICK_PREFIX)) {
             return;

@@ -1,6 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClientConfig;
+import com.quest_enhance.client.QuestDescriptionTable;
 import com.quest_enhance.client.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
@@ -35,6 +36,7 @@ public final class QuestEnhance {
         );
         loading_context.getModEventBus().addListener(this::addPackFinder);
         loading_context.getModEventBus().addListener(QuestDescriptionVideo::clientSetup);
+        loading_context.getModEventBus().addListener(QuestDescriptionTable::clientSetup);
     }
 
     // 将配置目录中的图片作为必选客户端资源包加载
