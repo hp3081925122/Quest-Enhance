@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.google.gson.JsonArray;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.MultilineTextEditorAccess;
 import com.quest_enhance.client.QuestDescriptionWidthContext;
@@ -9,12 +10,14 @@ import dev.ftb.mods.ftblibrary.config.ConfigCallback;
 import dev.ftb.mods.ftblibrary.config.ListConfig;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.ui.MultilineTextBox;
+import dev.ftb.mods.ftblibrary.ui.MultilineTextBox.StringExtents;
 import dev.ftb.mods.ftblibrary.ui.input.Key;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
 import dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Component.Serializer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.spongepowered.asm.mixin.Final;
@@ -48,6 +51,64 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
     @Invoker("insertAtEndOfLine")
     @Override
     public abstract void quest_enhance$insert_at_end_of_line(String text);
+
+    // 只允许原生任务链接处理单行选择内容
+    @Override
+    public boolean quest_enhance$has_single_line_selection() {
+        return this.textBox.hasSelection() && !this.textBox.getSelectedText().contains("\n");
+    }
+
+    // 为快速组件配置页提供当前选择文字
+    @Override
+    public String quest_enhance$get_selected_text() {
+        return this.quest_enhance$has_single_line_selection()
+                ? this.textBox.getSelectedText()
+                : "";
+    }
+
+    // 把原版文字组件安全地写成 JSON，并保留选择内容所在行的前后文字
+    @Override
+    public void quest_enhance$insert_component(Component component) {
+        if (!this.quest_enhance$has_single_line_selection()) {
+            this.quest_enhance$insert_at_end_of_line("\n" + Serializer.toJson(component));
+            return;
+        }
+
+        String editor_text = this.textBox.getText();
+        StringExtents selection = this.textBox.getSelected();
+        int line_start = editor_text.lastIndexOf('\n', selection.start() - 1) + 1;
+        int next_line = editor_text.indexOf('\n', selection.end());
+        int line_end = next_line < 0 ? editor_text.length() : next_line;
+        String line = editor_text.substring(line_start, line_end);
+
+        // 已经是 JSON 的行无法仅凭原始字符选择可靠定位组件，改为插入新行
+        if ((line.startsWith("{") || line.startsWith("["))
+                && (line.endsWith("}") || line.endsWith("]"))) {
+            this.quest_enhance$insert_at_end_of_line("\n" + Serializer.toJson(component));
+            return;
+        }
+
+        // 使用 Gson 组件树转义引号和特殊字符，避免生成损坏的任务描述
+        JsonArray parts = new JsonArray();
+        String before = editor_text.substring(line_start, selection.start());
+        String after = editor_text.substring(selection.end(), line_end);
+        if (!before.isEmpty()) {
+            parts.add(Serializer.toJsonTree(Component.literal(before)));
+        }
+        parts.add(Serializer.toJsonTree(component));
+        if (!after.isEmpty()) {
+            parts.add(Serializer.toJsonTree(Component.literal(after)));
+        }
+
+        // 按 FTB 原编辑器的选择替换方式更新整行并恢复文本框焦点
+        this.textBox.setSelecting(false);
+        this.textBox.seekCursor(net.minecraft.client.gui.components.Whence.ABSOLUTE, line_start);
+        this.textBox.setSelecting(true);
+        this.textBox.seekCursor(net.minecraft.client.gui.components.Whence.ABSOLUTE, line_end);
+        this.textBox.insertText(parts.toString());
+        this.textBox.setSelecting(false);
+        this.textBox.setFocused(true);
+    }
 
     // 接收任务节点介绍面板的内容宽度，其他多行编辑器保持原有默认尺寸
     @Inject(method = "<init>", at = @At("RETURN"))
