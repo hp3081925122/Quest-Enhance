@@ -12,6 +12,8 @@
     "ImageResourceConfigMixin",
     "KillTaskAccessor",
     "MultilineTextEditorScreenMixin",
+    "MultilineTextEditorToolbarMixin",
+    "QuestDescriptionFieldMixin",
     "QuestButtonMixin",
     "QuestConfigMixin",
     "QuestObjectBaseAccessor",

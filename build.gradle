@@ -64,6 +64,7 @@ sourceSets.main.resources {
 repositories {
     maven { url = 'https://maven.ftb.dev/releases' }
     maven { url = 'https://maven.architectury.dev/' }
+    maven { url = 'https://api.modrinth.com/maven' }
 }
 
 dependencies {
@@ -82,7 +83,13 @@ dependencies {
     runtimeOnly(fg.deobf("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}")) {
         transitive = false
     }
+    compileOnly fg.deobf("maven.modrinth:watermedia:${watermedia_version}") {
+        transitive = false
+    }
     runtimeOnly(fg.deobf("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}")) {
+        transitive = false
+    }
+    runtimeOnly fg.deobf("maven.modrinth:watermedia:${watermedia_version}") {
         transitive = false
     }
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
@@ -95,6 +102,7 @@ tasks.named('processResources', ProcessResources).configure {
             forge_version           : forge_version,
             forge_version_range     : forge_version_range,
             loader_version_range    : loader_version_range,
+            watermedia_version      : watermedia_version,
             mod_id                  : mod_id,
             mod_name                : mod_name,
             mod_license             : mod_license,

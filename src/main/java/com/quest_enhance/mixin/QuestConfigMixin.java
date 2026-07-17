@@ -1,6 +1,8 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.QuestEntityModel;
+import com.quest_enhance.client.QuestVideoData;
+import com.quest_enhance.client.VideoConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftblibrary.config.NameMap;
@@ -60,20 +62,40 @@ public abstract class QuestConfigMixin {
             if (selected_model.equals(QuestEntityModel.NONE)) {
                 ItemStack current_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
                 if (QuestEntityModel.getEntityModel(current_icon).isPresent()) {
-                    quest.setRawIcon(ItemStack.EMPTY);
+                    String video_path = QuestVideoData.getVideo(current_icon).orElse("");
+                    quest.setRawIcon(QuestVideoData.withVideo(ItemStack.EMPTY, video_path));
                 }
             } else {
-                quest.setRawIcon(QuestEntityModel.createModelIcon(selected_model));
+                ItemStack current_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
+                String video_path = QuestVideoData.getVideo(current_icon).orElse("");
+                quest.setRawIcon(QuestVideoData.withVideo(
+                        QuestEntityModel.createModelIcon(selected_model),
+                        video_path
+                ));
             }
             quest.clearCachedData();
         }, entity_models, QuestEntityModel.NONE)
                 .setNameKey("quest_enhance.quest_model")
                 .setOrder(-125);
 
+        // 将节点视频路径保存在同一个原生图标数据中，避免引入额外任务文件
+        String initial_video = QuestVideoData.getVideo(raw_icon).orElse("");
+        config.add(
+                "video",
+                new VideoConfig(),
+                initial_video,
+                video_path -> {
+                    ItemStack current_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
+                    quest.setRawIcon(QuestVideoData.withVideo(current_icon, video_path));
+                    quest.clearCachedData();
+                },
+                ""
+        ).setNameKey("quest_enhance.quest_video").setOrder(-124);
+
         // 给模型项腾出图标下方的位置，并保持标签和后续字段的原有相对顺序
         for (ConfigValue<?> value : config.getValues()) {
             if ("tags".equals(value.id)) {
-                value.setOrder(-124);
+                value.setOrder(-123);
                 break;
             }
         }

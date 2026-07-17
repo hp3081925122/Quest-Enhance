@@ -1,10 +1,14 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.ChapterCanvasText;
+import com.quest_enhance.client.ChapterCanvasVideo;
+import com.quest_enhance.client.VideoConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
+import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
 import dev.ftb.mods.ftblibrary.config.NameMap;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
+import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -67,51 +71,78 @@ public abstract class ChapterImageMixin {
     @Shadow
     private int order;
 
-    // 为画布文字提供专用属性页，隐藏无意义的图片和点击字段
+    // 为画布文字和视频提供专用属性页，隐藏无意义的图片和点击字段
     @Inject(method = "fillConfigGroup", at = @At("HEAD"), cancellable = true)
-    private void quest_enhance$fill_text_config(ConfigGroup config, CallbackInfo callback_info) {
+    private void quest_enhance$fill_special_config(ConfigGroup config, CallbackInfo callback_info) {
         ChapterImage image = (ChapterImage) (Object) this;
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(image);
-        if (text_data.isEmpty()) {
+        Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(image);
+        if (text_data.isEmpty() && video_data.isEmpty()) {
             return;
         }
-        ChapterCanvasText.TextData data = text_data.get();
 
-        // 添加文字内容和原生章节图片共有的布局属性
-        config.addString(
-                "text",
-                data.text(),
-                value -> ChapterCanvasText.setText(image, value),
-                "",
-                Pattern.compile(".+")
-        ).setNameKey("quest_enhance.chapter_text.text");
+        // 根据元素类型添加文字或视频路径配置
+        if (text_data.isPresent()) {
+            ChapterCanvasText.TextData data = text_data.get();
+            config.addString(
+                    "text",
+                    data.text(),
+                    value -> ChapterCanvasText.setText(image, value),
+                    "",
+                    Pattern.compile(".+")
+            ).setNameKey("quest_enhance.chapter_text.text");
 
-        // 构建当前全部已加载字体组成的原生枚举选择器
-        List<ResourceLocation> font_ids = ChapterCanvasText.getAvailableFonts();
-        if (!font_ids.contains(data.font())) {
-            font_ids.add(data.font());
+            // 构建当前全部已加载字体组成的原生枚举选择器
+            List<ResourceLocation> font_ids = ChapterCanvasText.getAvailableFonts();
+            if (!font_ids.contains(data.font())) {
+                font_ids.add(data.font());
+            }
+            NameMap<ResourceLocation> fonts = NameMap.of(ChapterCanvasText.DEFAULT_FONT, font_ids)
+                    .name(font -> Component.literal(font.toString()))
+                    .create();
+            config.addEnum(
+                    "font",
+                    data.font(),
+                    value -> ChapterCanvasText.setFont(image, value),
+                    fonts,
+                    ChapterCanvasText.DEFAULT_FONT
+            ).setNameKey("quest_enhance.chapter_text.font");
+        } else {
+            ChapterCanvasVideo.VideoData data = video_data.get();
+            config.add(
+                    "video",
+                    new VideoConfig(),
+                    data.path(),
+                    value -> ChapterCanvasVideo.setVideo(image, value),
+                    ""
+            ).setNameKey("quest_enhance.video.path");
+            config.add(
+                    "cover",
+                    new ImageResourceConfig(),
+                    ImageResourceConfig.getResourceLocation(image.getImage()),
+                    value -> image.setImage(Icon.getIcon(value)),
+                    ImageResourceConfig.NONE
+            ).setNameKey("quest_enhance.chapter_video.cover");
         }
-        NameMap<ResourceLocation> fonts = NameMap.of(ChapterCanvasText.DEFAULT_FONT, font_ids)
-                .name(font -> Component.literal(font.toString()))
-                .create();
-        config.addEnum(
-                "font",
-                data.font(),
-                value -> ChapterCanvasText.setFont(image, value),
-                fonts,
-                ChapterCanvasText.DEFAULT_FONT
-        ).setNameKey("quest_enhance.chapter_text.font");
+
+        // 添加两种特殊画布元素共用的布局和显示属性
         config.addDouble("x", this.x, value -> this.x = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
         config.addDouble("y", this.y, value -> this.y = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
         config.addDouble("width", this.width, value -> this.width = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("height", this.height, value -> this.height = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("rotation", this.rotation, value -> this.rotation = value, 0.0, -180.0, 180.0);
         config.addColor("color", this.color, value -> this.color = value, Color4I.WHITE)
-                .setNameKey("quest_enhance.chapter_text.color");
+                .setNameKey(text_data.isPresent()
+                        ? "quest_enhance.chapter_text.color"
+                        : "quest_enhance.chapter_video.color");
         config.addInt("order", this.order, value -> this.order = value, 0, Integer.MIN_VALUE, Integer.MAX_VALUE)
-                .setNameKey("quest_enhance.chapter_text.order");
+                .setNameKey(text_data.isPresent()
+                        ? "quest_enhance.chapter_text.order"
+                        : "quest_enhance.chapter_video.order");
         config.addInt("alpha", this.alpha, value -> this.alpha = value, 255, 0, 255)
-                .setNameKey("quest_enhance.chapter_text.alpha");
+                .setNameKey(text_data.isPresent()
+                        ? "quest_enhance.chapter_text.alpha"
+                        : "quest_enhance.chapter_video.alpha");
         config.addList("hover", this.hover, new StringConfig(), "");
         config.addBool("dev", this.editorsOnly, value -> this.editorsOnly = value, false);
         config.addBool("corner", this.alignToCorner, value -> this.alignToCorner = value, false);
@@ -128,10 +159,12 @@ public abstract class ChapterImageMixin {
         callback_info.cancel();
     }
 
-    // 文字始终按字体原始比例渲染，不显示图片宽高修复按钮
+    // 特殊画布元素不显示原生图片宽高修复按钮
     @Inject(method = "isAspectRatioOff", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$disable_text_aspect_ratio_fix(CallbackInfoReturnable<Boolean> callback_info) {
-        if (ChapterCanvasText.getTextData((ChapterImage) (Object) this).isPresent()) {
+        ChapterImage image = (ChapterImage) (Object) this;
+        if (ChapterCanvasText.getTextData(image).isPresent()
+                || ChapterCanvasVideo.getVideoData(image).isPresent()) {
             callback_info.setReturnValue(false);
         }
     }
@@ -141,5 +174,7 @@ public abstract class ChapterImageMixin {
     private void quest_enhance$get_text_title(CallbackInfoReturnable<Component> callback_info) {
         ChapterCanvasText.getTextData((ChapterImage) (Object) this)
                 .ifPresent(data -> callback_info.setReturnValue(data.component()));
+        ChapterCanvasVideo.getVideoData((ChapterImage) (Object) this)
+                .ifPresent(data -> callback_info.setReturnValue(Component.literal(data.path())));
     }
 }

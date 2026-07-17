@@ -1,6 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClientConfig;
+import com.quest_enhance.client.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackType;
@@ -33,6 +34,7 @@ public final class QuestEnhance {
                 MOD_ID + "-client.toml"
         );
         loading_context.getModEventBus().addListener(this::addPackFinder);
+        loading_context.getModEventBus().addListener(QuestDescriptionVideo::clientSetup);
     }
 
     // 将配置目录中的图片作为必选客户端资源包加载
@@ -48,8 +50,14 @@ public final class QuestEnhance {
                 .resolve(MOD_ID)
                 .resolve("textures")
                 .resolve("ftb");
+        Path video_directory = pack_root
+                .resolve("assets")
+                .resolve(MOD_ID)
+                .resolve("videos")
+                .resolve("ftb");
         try {
             Files.createDirectories(image_directory);
+            Files.createDirectories(video_directory);
             Files.writeString(
                     pack_root.resolve("pack.mcmeta"),
                     "{\n  \"pack\": {\n    \"description\": {\n      \"translate\": \"pack.quest_enhance.description\"\n    },\n    \"pack_format\": 15\n  }\n}\n",

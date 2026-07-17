@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.MultilineTextEditorAccess;
 import com.quest_enhance.client.QuestDescriptionWidthContext;
 import com.quest_enhance.client.WindowsClipboardImage;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -35,7 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Mixin(value = MultilineTextEditorScreen.class, remap = false)
-public abstract class MultilineTextEditorScreenMixin {
+public abstract class MultilineTextEditorScreenMixin implements MultilineTextEditorAccess {
     @Unique
     private int quest_enhance$description_content_width;
 
@@ -45,7 +46,8 @@ public abstract class MultilineTextEditorScreenMixin {
 
     // 复用 FTB Quests 原有的行末图片组件插入行为
     @Invoker("insertAtEndOfLine")
-    protected abstract void quest_enhance$insert_at_end_of_line(String text);
+    @Override
+    public abstract void quest_enhance$insert_at_end_of_line(String text);
 
     // 接收任务节点介绍面板的内容宽度，其他多行编辑器保持原有默认尺寸
     @Inject(method = "<init>", at = @At("RETURN"))
