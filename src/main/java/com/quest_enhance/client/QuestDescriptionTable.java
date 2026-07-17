@@ -103,15 +103,24 @@ public final class QuestDescriptionTable {
 
     // 从已解析文字组件的内部点击值识别表格
     public static Optional<TableData> find(Component component) {
-        if (component == null || component.getStyle().getClickEvent() == null) {
+        if (component == null) {
             return Optional.empty();
         }
         ClickEvent click_event = component.getStyle().getClickEvent();
-        if (click_event.getAction() != ClickEvent.Action.CHANGE_PAGE
-                || !click_event.getValue().startsWith(CLICK_PREFIX)) {
-            return Optional.empty();
+        if (click_event != null
+                && click_event.getAction() == ClickEvent.Action.CHANGE_PAGE
+                && click_event.getValue().startsWith(CLICK_PREFIX)) {
+            return decode(click_event.getValue().substring(CLICK_PREFIX.length()));
         }
-        return decode(click_event.getValue().substring(CLICK_PREFIX.length()));
+
+        // 1.20.1 会把自定义解析结果附加到根文本的子组件中
+        for (Component sibling : component.getSiblings()) {
+            Optional<TableData> nested = find(sibling);
+            if (nested.isPresent()) {
+                return nested;
+            }
+        }
+        return Optional.empty();
     }
 
     // 根据表格宽度计算每一行自动换行后的实际高度
