@@ -1,5 +1,8 @@
 package com.quest_enhance.client;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ItemStackConfig;
 import dev.ftb.mods.ftblibrary.config.NameMap;
@@ -16,11 +19,15 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.contents.KeybindContents;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public final class DescriptionComponentMenu {
@@ -121,6 +128,116 @@ public final class DescriptionComponentMenu {
         ));
     }
 
+    // 识别独立的快捷 JSON 组件，并用与插入时相同的配置页编辑原值
+    public static boolean edit(Panel parent, String raw_text, Consumer<String> save) {
+        JsonObject json;
+        Component component;
+        try {
+            JsonElement element = JsonParser.parseString(raw_text);
+            if (!element.isJsonObject()) {
+                return false;
+            }
+            json = element.getAsJsonObject();
+            component = Component.Serializer.fromJson(raw_text);
+        } catch (RuntimeException exception) {
+            return false;
+        }
+
+        // 多组件 JSON 可能包含多个独立样式，继续交给 FTB 原编辑器
+        if (component == null || !component.getSiblings().isEmpty()) {
+            return false;
+        }
+
+        // 保存时使用 1.20.1 原版序列化器生成合法组件 JSON
+        Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(edited));
+        Style style = component.getStyle();
+        ClickEvent click_event = style.getClickEvent();
+
+        // 点击事件组件可直接还原动作值和显示文字
+        if (click_event != null) {
+            TextAction action = switch (click_event.getAction()) {
+                case OPEN_URL -> TextAction.WEB_LINK;
+                case COPY_TO_CLIPBOARD -> TextAction.COPY;
+                case RUN_COMMAND -> TextAction.COMMAND;
+                default -> null;
+            };
+            if (action == null) {
+                return false;
+            }
+            openTextComponentConfig(
+                    parent,
+                    action,
+                    component.getString(),
+                    click_event.getValue(),
+                    ChapterCanvasText.DEFAULT_FONT,
+                    component_save
+            );
+            return true;
+        }
+
+        // 悬停事件分别恢复文字内容或完整物品堆栈
+        HoverEvent hover_event = style.getHoverEvent();
+        if (hover_event != null) {
+            Component hover_text = hover_event.getValue(HoverEvent.Action.SHOW_TEXT);
+            if (hover_text != null) {
+                openTextComponentConfig(
+                        parent,
+                        TextAction.HOVER_TEXT,
+                        component.getString(),
+                        hover_text.getString(),
+                        ChapterCanvasText.DEFAULT_FONT,
+                        component_save
+                );
+                return true;
+            }
+
+            HoverEvent.ItemStackInfo item_info = hover_event.getValue(HoverEvent.Action.SHOW_ITEM);
+            if (item_info != null) {
+                openItemHoverConfig(parent, item_info.getItemStack(), component.getString(), component_save);
+                return true;
+            }
+            return false;
+        }
+
+        // 内容类型组件从真实 contents 中恢复技术键和回退文字
+        if (component.getContents() instanceof TranslatableContents contents) {
+            openTextComponentConfig(
+                    parent,
+                    TextAction.TRANSLATION,
+                    contents.getFallback() == null ? component.getString() : contents.getFallback(),
+                    contents.getKey(),
+                    ChapterCanvasText.DEFAULT_FONT,
+                    component_save
+            );
+            return true;
+        }
+        if (component.getContents() instanceof KeybindContents contents) {
+            openTextComponentConfig(
+                    parent,
+                    TextAction.KEYBIND,
+                    component.getString(),
+                    contents.getName(),
+                    ChapterCanvasText.DEFAULT_FONT,
+                    component_save
+            );
+            return true;
+        }
+
+        // 自定义字体只接管序列化结果中明确存在 font 字段的组件
+        if (json.has("font")) {
+            openTextComponentConfig(
+                    parent,
+                    TextAction.FONT,
+                    component.getString(),
+                    "",
+                    style.getFont(),
+                    component_save
+            );
+            return true;
+        }
+        return false;
+    }
+
     // 根据所选类型配置显示文字和动作值，再序列化为原版文字组件
     private static void openTextComponentConfig(
             Panel parent,
@@ -128,10 +245,10 @@ public final class DescriptionComponentMenu {
             TextAction action
     ) {
         String selected_text = editor.quest_enhance$get_selected_text();
-        String[] display_text = {selected_text.isBlank()
+        String display_text = selected_text.isBlank()
                 ? Component.translatable(action.default_text_key).getString()
-                : selected_text};
-        String[] action_value = {switch (action) {
+                : selected_text;
+        String action_value = switch (action) {
             case HOVER_TEXT -> Component.translatable(
                     "quest_enhance.description_component.default.hover_content"
             ).getString();
@@ -139,8 +256,29 @@ public final class DescriptionComponentMenu {
                     "quest_enhance.description_component.default.copy_value"
             ).getString();
             default -> action.default_value;
-        }};
-        ResourceLocation[] font = {ChapterCanvasText.DEFAULT_FONT};
+        };
+        openTextComponentConfig(
+                parent,
+                action,
+                display_text,
+                action_value,
+                ChapterCanvasText.DEFAULT_FONT,
+                editor::quest_enhance$insert_component
+        );
+    }
+
+    // 统一承载新建和编辑组件，保证两条入口使用相同字段与生成逻辑
+    private static void openTextComponentConfig(
+            Panel parent,
+            TextAction action,
+            String initial_display_text,
+            String initial_action_value,
+            ResourceLocation initial_font,
+            Consumer<Component> save
+    ) {
+        String[] display_text = {initial_display_text};
+        String[] action_value = {initial_action_value};
+        ResourceLocation[] font = {initial_font};
 
         // 确认后根据动作类型构造带样式、悬停或点击事件的组件
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
@@ -170,7 +308,7 @@ public final class DescriptionComponentMenu {
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, action_value[0])));
                     case KEYBIND -> Component.keybind(action_value[0]);
                 };
-                editor.quest_enhance$insert_component(component);
+                save.accept(component);
             }
             parent.run();
         }) {
@@ -208,8 +346,11 @@ public final class DescriptionComponentMenu {
                     NON_EMPTY
             ).setNameKey("quest_enhance.description_component.copy_value");
             case FONT -> {
-                List<ResourceLocation> fonts = ChapterCanvasText.getAvailableFonts();
-                NameMap<ResourceLocation> font_map = NameMap.of(ChapterCanvasText.DEFAULT_FONT, fonts)
+                List<ResourceLocation> fonts = new ArrayList<>(ChapterCanvasText.getAvailableFonts());
+                if (!fonts.contains(font[0])) {
+                    fonts.add(font[0]);
+                }
+                NameMap<ResourceLocation> font_map = NameMap.of(font[0], fonts)
                         .name(value -> Component.literal(value.toString()))
                         .create();
                 group.addEnum(
@@ -217,7 +358,7 @@ public final class DescriptionComponentMenu {
                         font[0],
                         value -> font[0] = value,
                         font_map,
-                        ChapterCanvasText.DEFAULT_FONT
+                        font[0]
                 ).setNameKey("quest_enhance.description_component.font");
             }
             case TRANSLATION -> group.addString(
@@ -315,9 +456,22 @@ public final class DescriptionComponentMenu {
             ItemStack selected_stack
     ) {
         String selected_text = editor.quest_enhance$get_selected_text();
-        String[] display_text = {selected_text.isBlank()
-                ? selected_stack.getHoverName().getString()
-                : selected_text};
+        openItemHoverConfig(
+                parent,
+                selected_stack,
+                selected_text.isBlank() ? selected_stack.getHoverName().getString() : selected_text,
+                editor::quest_enhance$insert_component
+        );
+    }
+
+    // 统一承载新建和编辑物品悬停组件，并保留完整物品数据
+    private static void openItemHoverConfig(
+            Panel parent,
+            ItemStack selected_stack,
+            String initial_display_text,
+            Consumer<Component> save
+    ) {
+        String[] display_text = {initial_display_text};
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 Component component = Component.literal(display_text[0]).withStyle(Style.EMPTY.withHoverEvent(
@@ -326,7 +480,7 @@ public final class DescriptionComponentMenu {
                                 new HoverEvent.ItemStackInfo(selected_stack.copy())
                         )
                 ));
-                editor.quest_enhance$insert_component(component);
+                save.accept(component);
             }
             parent.run();
         }) {
