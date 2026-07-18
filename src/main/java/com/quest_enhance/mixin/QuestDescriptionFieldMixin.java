@@ -3,7 +3,7 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.QuestDescriptionTable;
 import com.quest_enhance.client.QuestDescriptionVideo;
-import com.quest_enhance.client.VideoPlayerScreen;
+import com.quest_enhance.client.VideoSupport;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.ClickEvent;
@@ -59,7 +59,7 @@ public abstract class QuestDescriptionFieldMixin {
 
         String encoded_path = click_value.substring(QuestDescriptionVideo.CLICK_PREFIX.length());
         QuestDescriptionVideo.decodePath(encoded_path).ifPresentOrElse(
-                VideoPlayerScreen::open,
+                VideoSupport::open,
                 () -> QuestEnhance.LOGGER.error(
                         "Failed to decode a quest description video path: {}",
                         encoded_path

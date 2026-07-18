@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Client",
+      "presentation": {
+        "group": "Mod Development - quest_enhance",
+        "order": 0
+      },
+      "projectName": "quest_enhance",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Server",
+      "presentation": {
+        "group": "Mod Development - quest_enhance",
+        "order": 1
+      },
+      "projectName": "quest_enhance",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    }
+  ]
+}

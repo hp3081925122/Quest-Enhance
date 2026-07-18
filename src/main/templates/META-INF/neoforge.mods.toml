@@ -33,10 +33,3 @@ type = "required"
 versionRange = "[${ftb_quests_version},)"
 ordering = "AFTER"
 side = "CLIENT"
-
-[[dependencies.${mod_id}]]
-modId = "watermedia"
-type = "required"
-versionRange = "[${watermedia_version},3.0.0)"
-ordering = "AFTER"
-side = "CLIENT"

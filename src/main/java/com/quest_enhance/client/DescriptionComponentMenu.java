@@ -74,7 +74,7 @@ public final class DescriptionComponentMenu {
         );
 
         // 媒体分组提供网络图片、物品展示和已有视频能力
-        List<ContextMenuItem> media = List.of(
+        List<ContextMenuItem> media = new ArrayList<>(List.of(
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.remote_image"),
                         Icons.GLOBE,
@@ -89,13 +89,15 @@ public final class DescriptionComponentMenu {
                         Component.translatable("quest_enhance.description_component.item_hover"),
                         Icons.INFO,
                         button -> selectItem(parent, editor, true)
-                ),
-                new ContextMenuItem(
+                )
+        ));
+        if (VideoSupport.isAvailable()) {
+            media.add(new ContextMenuItem(
                         Component.translatable("quest_enhance.video.description.add"),
                         Icons.CAMERA,
                         button -> openVideoSelector(parent, editor)
-                )
-        );
+            ));
+        }
 
         // 文字分组生成原版 JSON 组件，保持任务文件兼容
         List<ContextMenuItem> text = List.of(

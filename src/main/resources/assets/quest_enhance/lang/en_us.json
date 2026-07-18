@@ -103,6 +103,8 @@
   "quest_enhance.video.error.invalid_path": "Invalid video path: %s",
   "quest_enhance.video.error.missing": "Video file not found: %s",
   "quest_enhance.video.error.backend": "The WaterMedia video backend is unavailable.",
+  "quest_enhance.video.error.missing_dependency": "WATERMeDIA is required to play videos.",
+  "quest_enhance.video.error.integration": "Failed to load the video player; check the WATERMeDIA version.",
   "quest_enhance.video.error.cache": "Failed to create a VLC-compatible local video path.",
   "quest_enhance.video.error.playback": "Video playback failed.",
   "quest_enhance.command.cleanup.nothing": "There are no FTB pasted images to clean up.",
