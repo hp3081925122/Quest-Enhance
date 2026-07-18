@@ -4,7 +4,7 @@ import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.quest_enhance.client.KillTaskEntityPreview;
 import com.quest_enhance.client.QuestEntityModel;
 import com.quest_enhance.client.QuestVideoData;
-import com.quest_enhance.client.VideoPlayerScreen;
+import com.quest_enhance.client.VideoSupport;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
@@ -99,7 +99,7 @@ public abstract class QuestButtonMixin {
         int mouse_y = button.getMouseY();
         if (mouse_x >= button.getX() + button.getWidth() - button_size
                 && mouse_y >= button.getY() + button.getHeight() - button_size) {
-            VideoPlayerScreen.open(video_path);
+            VideoSupport.open(video_path);
             callback_info.cancel();
         }
     }

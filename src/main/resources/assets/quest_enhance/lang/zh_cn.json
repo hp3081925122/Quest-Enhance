@@ -99,6 +99,8 @@
   "quest_enhance.video.error.invalid_path": "视频路径无效：%s",
   "quest_enhance.video.error.missing": "找不到视频文件：%s",
   "quest_enhance.video.error.backend": "WaterMedia 视频解码后端不可用。",
+  "quest_enhance.video.error.missing_dependency": "需要安装 WATERMeDIA 才能播放视频。",
+  "quest_enhance.video.error.integration": "视频播放器加载失败，请检查 WATERMeDIA 版本。",
   "quest_enhance.video.error.cache": "无法为 VLC 创建兼容的本地视频路径。",
   "quest_enhance.video.error.playback": "视频播放失败。",
   "quest_enhance.command.cleanup.nothing": "没有可清理的剪贴板图片。",

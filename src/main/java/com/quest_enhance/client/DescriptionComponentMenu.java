@@ -64,7 +64,7 @@ public final class DescriptionComponentMenu {
         );
 
         // 媒体分组提供物品、网络图片和 Quest Enhance 视频能力
-        List<ContextMenuItem> media = List.of(
+        List<ContextMenuItem> media = new ArrayList<>(List.of(
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.remote_image"),
                         Icons.GLOBE,
@@ -79,13 +79,15 @@ public final class DescriptionComponentMenu {
                         Component.translatable("quest_enhance.description_component.item_hover"),
                         Icons.INFO,
                         button -> selectItem(parent, editor, true)
-                ),
-                new ContextMenuItem(
+                )
+        ));
+        if (VideoSupport.isAvailable()) {
+            media.add(new ContextMenuItem(
                         Component.translatable("quest_enhance.video.description.add"),
                         Icons.CAMERA,
                         button -> openVideoSelector(parent, editor)
-                )
-        );
+            ));
+        }
 
         // 文字分组生成原版 JSON 组件，保持跨任务文件和语言文件兼容
         List<ContextMenuItem> text = List.of(

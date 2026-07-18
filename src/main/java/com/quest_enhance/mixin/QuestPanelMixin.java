@@ -3,6 +3,7 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
 import com.quest_enhance.client.VideoSelectionScreen;
+import com.quest_enhance.client.VideoSupport;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icons;
@@ -82,16 +83,18 @@ public abstract class QuestPanelMixin {
         ));
 
         // 输入视频相对路径，并在确认后创建十六比九的章节背景对象
-        context_menu.add(new ContextMenuItem(
-                Component.translatable("quest_enhance.chapter_video"),
-                Icons.CAMERA,
-                button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
-                    ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
-                    chapter.addImage(image);
-                    new EditObjectMessage(chapter).sendToServer();
-                    this.questScreen.refreshQuestPanel();
-                })
-        ));
+        if (VideoSupport.isAvailable()) {
+            context_menu.add(new ContextMenuItem(
+                    Component.translatable("quest_enhance.chapter_video"),
+                    Icons.CAMERA,
+                    button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
+                        ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
+                        chapter.addImage(image);
+                        new EditObjectMessage(chapter).sendToServer();
+                        this.questScreen.refreshQuestPanel();
+                    })
+            ));
+        }
         return context_menu;
     }
 }

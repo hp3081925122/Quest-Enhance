@@ -2,7 +2,7 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
-import com.quest_enhance.client.VideoPlayerScreen;
+import com.quest_enhance.client.VideoSupport;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
@@ -111,7 +111,7 @@ public abstract class ChapterImageButtonMixin {
         }
 
         ChapterCanvasVideo.getVideoData(this.chapterImage).ifPresent(data -> {
-            VideoPlayerScreen.open(data.path());
+            VideoSupport.open(data.path());
             callback_info.cancel();
         });
     }

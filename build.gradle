@@ -102,7 +102,6 @@ tasks.named('processResources', ProcessResources).configure {
             forge_version           : forge_version,
             forge_version_range     : forge_version_range,
             loader_version_range    : loader_version_range,
-            watermedia_version      : watermedia_version,
             mod_id                  : mod_id,
             mod_name                : mod_name,
             mod_license             : mod_license,
