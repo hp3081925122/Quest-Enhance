@@ -1,14 +1,17 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.client.DecorativeLineMenus;
 import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.quest_enhance.client.KillTaskEntityPreview;
 import com.quest_enhance.client.QuestEntityModel;
 import com.quest_enhance.client.QuestVideoData;
 import com.quest_enhance.client.VideoSupport;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
+import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.client.Minecraft;
@@ -23,11 +26,18 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
+
 @Mixin(value = QuestButton.class, remap = false)
 public abstract class QuestButtonMixin {
+    @Shadow
+    @Final
+    protected QuestScreen questScreen;
+
     @Shadow
     @Final
     Quest quest;
@@ -102,6 +112,21 @@ public abstract class QuestButtonMixin {
             VideoSupport.open(video_path);
             callback_info.cancel();
         }
+    }
+
+    // 在任务或辅助点组成的批量操作菜单中加入装饰线操作
+    @ModifyArg(
+            method = "onClicked",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/ui/BaseScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/ui/ContextMenu;"
+            ),
+            index = 0
+    )
+    private List<ContextMenuItem> quest_enhance$add_decorative_line_menu(
+            List<ContextMenuItem> context_menu
+    ) {
+        return DecorativeLineMenus.append(context_menu, this.questScreen, this.quest);
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型

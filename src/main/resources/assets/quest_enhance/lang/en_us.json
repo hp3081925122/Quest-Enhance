@@ -115,6 +115,14 @@
   "quest_enhance.command.cleanup.delete_failed": "%s images could not be deleted. Check the log for details.",
   "quest_enhance.multi_copy.count": "Copied %s quests or images",
   "quest_enhance.multi_copy.unsupported": "Multi-copy only supports quests and images.",
+  "quest_enhance.decorative_line.add": "Add Decorative Line",
+  "quest_enhance.decorative_line.remove": "Remove Decorative Line",
+  "quest_enhance.decorative_line.outline.enable": "Enable Decorative Line Outline",
+  "quest_enhance.decorative_line.outline.disable": "Disable Decorative Line Outline",
+  "quest_enhance.decorative_line.shadow.enable": "Enable Decorative Line Shadow",
+  "quest_enhance.decorative_line.shadow.disable": "Disable Decorative Line Shadow",
+  "quest_enhance.decorative_anchor": "Guide Point",
+  "quest_enhance.decorative_anchor.add": "Add Guide Point",
   "pack.quest_enhance.name": "Quest Enhance",
   "pack.quest_enhance.description": "Quest Enhance configuration resources"
 }
