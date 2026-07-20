@@ -19,6 +19,7 @@
     "QuestObjectBaseAccessor",
     "QuestPanelMixin",
     "QuestScreenAccessor",
+    "QuestScreenMixin",
     "TaskButtonMixin",
     "TextFieldMixin",
     "ViewQuestPanelMixin"

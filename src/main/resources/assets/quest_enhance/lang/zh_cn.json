@@ -109,6 +109,8 @@
   "quest_enhance.command.cleanup.read_directory_failed": "读取粘贴图片目录失败，未删除任何图片。",
   "quest_enhance.command.cleanup.success": "已删除 %s 张未使用图片，释放 %s。",
   "quest_enhance.command.cleanup.delete_failed": "另有 %s 张图片删除失败，请查看日志。",
+  "quest_enhance.multi_copy.count": "已复制 %s 个任务或图片",
+  "quest_enhance.multi_copy.unsupported": "多选复制仅支持任务和图片。",
   "pack.quest_enhance.name": "Quest Enhance",
   "pack.quest_enhance.description": "Quest Enhance 配置资源"
 }
