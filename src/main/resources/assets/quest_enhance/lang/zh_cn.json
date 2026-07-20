@@ -111,6 +111,14 @@
   "quest_enhance.command.cleanup.delete_failed": "另有 %s 张图片删除失败，请查看日志。",
   "quest_enhance.multi_copy.count": "已复制 %s 个任务或图片",
   "quest_enhance.multi_copy.unsupported": "多选复制仅支持任务和图片。",
+  "quest_enhance.decorative_line.add": "添加装饰线",
+  "quest_enhance.decorative_line.remove": "取消装饰线",
+  "quest_enhance.decorative_line.outline.enable": "启用装饰线描边",
+  "quest_enhance.decorative_line.outline.disable": "关闭装饰线描边",
+  "quest_enhance.decorative_line.shadow.enable": "启用装饰线阴影",
+  "quest_enhance.decorative_line.shadow.disable": "关闭装饰线阴影",
+  "quest_enhance.decorative_anchor": "辅助点",
+  "quest_enhance.decorative_anchor.add": "添加辅助点",
   "pack.quest_enhance.name": "Quest Enhance",
   "pack.quest_enhance.description": "Quest Enhance 配置资源"
 }

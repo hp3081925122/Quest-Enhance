@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
 import com.quest_enhance.client.VideoConfig;
@@ -71,13 +72,14 @@ public abstract class ChapterImageMixin {
     @Shadow
     private int order;
 
-    // 为画布文字和视频提供专用属性页，隐藏无意义的图片和点击字段
+    // 为画布文字、视频和辅助点提供专用属性页，隐藏无意义的图片和点击字段
     @Inject(method = "fillConfigGroup", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$fill_special_config(ConfigGroup config, CallbackInfo callback_info) {
         ChapterImage image = (ChapterImage) (Object) this;
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(image);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(image);
-        if (text_data.isEmpty() && video_data.isEmpty()) {
+        boolean decorative_anchor = DecorativeAnchor.isAnchor(image);
+        if (text_data.isEmpty() && video_data.isEmpty() && !decorative_anchor) {
             return;
         }
 
@@ -107,7 +109,7 @@ public abstract class ChapterImageMixin {
                     fonts,
                     ChapterCanvasText.DEFAULT_FONT
             ).setNameKey("quest_enhance.chapter_text.font");
-        } else {
+        } else if (video_data.isPresent()) {
             ChapterCanvasVideo.VideoData data = video_data.get();
             config.add(
                     "video",
@@ -125,9 +127,15 @@ public abstract class ChapterImageMixin {
             ).setNameKey("quest_enhance.chapter_video.cover");
         }
 
-        // 添加两种特殊画布元素共用的布局和显示属性
+        // 特殊画布元素都允许直接修改位置
         config.addDouble("x", this.x, value -> this.x = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
         config.addDouble("y", this.y, value -> this.y = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+        if (decorative_anchor) {
+            callback_info.cancel();
+            return;
+        }
+
+        // 文字和视频继续提供尺寸、旋转、颜色和显示条件
         config.addDouble("width", this.width, value -> this.width = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("height", this.height, value -> this.height = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("rotation", this.rotation, value -> this.rotation = value, 0.0, -180.0, 180.0);
@@ -164,7 +172,8 @@ public abstract class ChapterImageMixin {
     private void quest_enhance$disable_text_aspect_ratio_fix(CallbackInfoReturnable<Boolean> callback_info) {
         ChapterImage image = (ChapterImage) (Object) this;
         if (ChapterCanvasText.getTextData(image).isPresent()
-                || ChapterCanvasVideo.getVideoData(image).isPresent()) {
+                || ChapterCanvasVideo.getVideoData(image).isPresent()
+                || DecorativeAnchor.isAnchor(image)) {
             callback_info.setReturnValue(false);
         }
     }
@@ -176,5 +185,21 @@ public abstract class ChapterImageMixin {
                 .ifPresent(data -> callback_info.setReturnValue(data.component()));
         ChapterCanvasVideo.getVideoData((ChapterImage) (Object) this)
                 .ifPresent(data -> callback_info.setReturnValue(Component.literal(data.path())));
+        if (DecorativeAnchor.isAnchor((ChapterImage) (Object) this)) {
+            callback_info.setReturnValue(Component.translatable("quest_enhance.decorative_anchor"));
+        }
+    }
+
+    // 复制辅助点时重建 UUID，避免新旧辅助点映射到同一个路径节点
+    @Inject(method = "copy", at = @At("RETURN"))
+    private void quest_enhance$renew_copied_anchor_id(
+            Chapter target_chapter,
+            double target_x,
+            double target_y,
+            CallbackInfoReturnable<ChapterImage> callback_info
+    ) {
+        if (DecorativeAnchor.isAnchor((ChapterImage) (Object) this)) {
+            DecorativeAnchor.assignNewId(callback_info.getReturnValue());
+        }
     }
 }

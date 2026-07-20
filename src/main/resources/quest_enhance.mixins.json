@@ -4,7 +4,9 @@
   "package": "com.quest_enhance.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "quest_enhance.refmap.json",
-  "mixins": [],
+  "mixins": [
+    "ChapterMixin"
+  ],
   "client": [
     "ChapterImageAccessor",
     "ChapterImageButtonMixin",
