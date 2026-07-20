@@ -13,6 +13,7 @@ import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
+import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -49,8 +50,16 @@ public abstract class QuestPanelMixin {
         double y = this.questY;
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
 
+        // 将原生图像项和增强项移动到菜单顶部，避免窗口化小分辨率裁掉底部选项
+        int insert_index = 0;
+        int image_index = TaskTypes.TYPES.size();
+        if (image_index < context_menu.size()) {
+            ContextMenuItem image_item = context_menu.remove(image_index);
+            context_menu.add(insert_index++, image_item);
+        }
+
         // 打开单行文字输入框，并在确认后创建原生章节图片对象
-        context_menu.add(new ContextMenuItem(
+        ContextMenuItem text_item = new ContextMenuItem(
                 Component.translatable("quest_enhance.chapter_text"),
                 Icons.CHAT,
                 button -> {
@@ -80,11 +89,12 @@ public abstract class QuestPanelMixin {
                     overlay.setExtraZlevel(600);
                     this.questScreen.pushModalPanel(overlay);
                 }
-        ));
+        );
+        context_menu.add(insert_index++, text_item);
 
         // 输入视频相对路径，并在确认后创建十六比九的章节背景对象
         if (VideoSupport.isAvailable()) {
-            context_menu.add(new ContextMenuItem(
+            context_menu.add(insert_index, new ContextMenuItem(
                     Component.translatable("quest_enhance.chapter_video"),
                     Icons.CAMERA,
                     button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
