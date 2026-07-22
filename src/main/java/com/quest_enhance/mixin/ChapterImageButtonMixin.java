@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
 import com.quest_enhance.client.DecorativeLineMenus;
@@ -18,6 +19,7 @@ import dev.ftb.mods.ftbquests.client.gui.quests.ChapterImageButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
+import dev.ftb.mods.ftbquests.quest.QuestShape;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -26,6 +28,7 @@ import net.minecraft.network.chat.MutableComponent;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -37,6 +40,12 @@ import java.util.Optional;
 
 @Mixin(value = ChapterImageButton.class, remap = false)
 public abstract class ChapterImageButtonMixin {
+    @Unique
+    private boolean quest_enhance$anchor_selected;
+
+    @Unique
+    private boolean quest_enhance$anchor_selection_state_known;
+
     @Shadow
     @Final
     private QuestScreen questScreen;
@@ -161,22 +170,28 @@ public abstract class ChapterImageButtonMixin {
             return;
         }
 
-        // 辅助点只在编辑模式显示，并以高对比度小方块标记路径拐点
+        // 辅助点始终显示，并使用无任务图标的原生圆形外观
         if (decorative_anchor) {
             QuestScreenAccessor screen = (QuestScreenAccessor) (Object) this.questScreen;
-            if (screen.quest_enhance$get_file().canEdit()) {
-                int center_x = x + width / 2;
-                int center_y = y + height / 2;
-                int radius = Math.max(2, Math.min(4, Math.min(width, height) / 2));
-                graphics.fill(center_x - radius - 1, center_y - radius - 1, center_x + radius + 2, center_y + radius + 2, 0xD0000000);
-                graphics.fill(center_x - radius, center_y - radius, center_x + radius + 1, center_y + radius + 1, 0xFF50D8FF);
-                graphics.fill(center_x - 1, center_y - 1, center_x + 2, center_y + 2, 0xFFFFFFFF);
-                if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
-                    graphics.fill(center_x - radius - 2, center_y - radius - 2, center_x + radius + 3, center_y - radius - 1, 0xFFFFFFFF);
-                    graphics.fill(center_x - radius - 2, center_y + radius + 2, center_x + radius + 3, center_y + radius + 3, 0xFFFFFFFF);
-                    graphics.fill(center_x - radius - 2, center_y - radius - 1, center_x - radius - 1, center_y + radius + 2, 0xFFFFFFFF);
-                    graphics.fill(center_x + radius + 2, center_y - radius - 1, center_x + radius + 3, center_y + radius + 2, 0xFFFFFFFF);
-                }
+            QuestShape circle = QuestShape.get("circle");
+            boolean selected = screen.quest_enhance$get_file().canEdit()
+                    && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
+            if (!this.quest_enhance$anchor_selection_state_known || selected != this.quest_enhance$anchor_selected) {
+                QuestEnhance.LOGGER.debug(
+                        "Decorative anchor selection changed: node={}, selected={}",
+                        DecorativeAnchor.nodeKey(this.chapterImage).orElse("unknown"),
+                        selected
+                );
+                this.quest_enhance$anchor_selected = selected;
+                this.quest_enhance$anchor_selection_state_known = true;
+            }
+            circle.getShape().withColor(Color4I.DARK_GRAY).draw(graphics, x, y, width, height);
+            circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)).draw(graphics, x, y, width, height);
+            circle.getOutline().withColor(Color4I.rgb(0x808080)).draw(graphics, x, y, width, height);
+            if (selected) {
+                int selection_alpha = (int) (190.0 + Math.sin(System.currentTimeMillis() * 0.003) * 50.0);
+                circle.getOutline().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
+                circle.getBackground().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
             }
             callback_info.cancel();
             return;

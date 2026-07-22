@@ -18,8 +18,6 @@ import java.util.WeakHashMap;
 public final class DecorativeDependencyLines {
     private static final String NBT_KEY = "quest_enhance_decorative_lines";
     private static final String NODES_KEY = "nodes";
-    private static final String OUTLINE_KEY = "outline";
-    private static final String SHADOW_KEY = "shadow";
     private static final String QUEST_PREFIX = "q:";
     private static final Map<Chapter, List<Line>> LINES = new WeakHashMap<>();
 
@@ -42,57 +40,36 @@ public final class DecorativeDependencyLines {
         if (normalized.size() < 2 || find(chapter, normalized).isPresent()) {
             return false;
         }
-        get(chapter).add(new Line(normalized, true, true));
+        get(chapter).add(new Line(normalized));
         return true;
     }
 
-    // 删除与当前选择节点集合相同的装饰线
+    // 删除包含当前全部选择节点的装饰线
     public static boolean remove(Chapter chapter, List<String> node_keys) {
         List<String> normalized = normalize(node_keys);
         Iterator<Line> iterator = get(chapter).iterator();
         while (iterator.hasNext()) {
-            if (sameNodes(iterator.next().nodes(), normalized)) {
+            Line line = iterator.next();
+            if (containsNodes(line.nodes(), normalized)) {
                 iterator.remove();
+                QuestEnhance.LOGGER.debug(
+                        "Removed decorative line: selectedNodes={}, lineNodes={}",
+                        normalized,
+                        line.nodes()
+                );
                 return true;
             }
         }
+        QuestEnhance.LOGGER.debug("No decorative line matched selected nodes: {}", normalized);
         return false;
     }
 
-    // 查找与当前选择节点集合相同的装饰线
+    // 查找包含当前全部选择节点的装饰线
     public static Optional<Line> find(Chapter chapter, List<String> node_keys) {
         List<String> normalized = normalize(node_keys);
         return get(chapter).stream()
-                .filter(line -> sameNodes(line.nodes(), normalized))
+                .filter(line -> containsNodes(line.nodes(), normalized))
                 .findFirst();
-    }
-
-    // 切换指定装饰线的描边状态
-    public static boolean setOutline(Chapter chapter, List<String> node_keys, boolean outline) {
-        List<String> normalized = normalize(node_keys);
-        List<Line> lines = get(chapter);
-        for (int index = 0; index < lines.size(); index++) {
-            Line line = lines.get(index);
-            if (sameNodes(line.nodes(), normalized) && line.outline() != outline) {
-                lines.set(index, new Line(line.nodes(), outline, line.shadow()));
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // 切换指定装饰线的阴影状态
-    public static boolean setShadow(Chapter chapter, List<String> node_keys, boolean shadow) {
-        List<String> normalized = normalize(node_keys);
-        List<Line> lines = get(chapter);
-        for (int index = 0; index < lines.size(); index++) {
-            Line line = lines.get(index);
-            if (sameNodes(line.nodes(), normalized) && line.shadow() != shadow) {
-                lines.set(index, new Line(line.nodes(), line.outline(), shadow));
-                return true;
-            }
-        }
-        return false;
     }
 
     // 删除节点时从全部装饰线中同步移除，节点不足两个的线一并删除
@@ -108,7 +85,7 @@ public final class DecorativeDependencyLines {
             if (nodes.size() < 2) {
                 lines.remove(index);
             } else {
-                lines.set(index, new Line(List.copyOf(nodes), line.outline(), line.shadow()));
+                lines.set(index, new Line(List.copyOf(nodes)));
             }
         }
     }
@@ -123,8 +100,6 @@ public final class DecorativeDependencyLines {
                 nodes.add(StringTag.valueOf(node));
             }
             line_tag.put(NODES_KEY, nodes);
-            line_tag.putBoolean(OUTLINE_KEY, line.outline());
-            line_tag.putBoolean(SHADOW_KEY, line.shadow());
             line_list.add(line_tag);
         }
         tag.put(NBT_KEY, line_list);
@@ -153,11 +128,7 @@ public final class DecorativeDependencyLines {
             }
             List<String> normalized = normalize(nodes);
             if (normalized.size() >= 2) {
-                lines.add(new Line(
-                        normalized,
-                        line_tag.getBoolean(OUTLINE_KEY),
-                        line_tag.getBoolean(SHADOW_KEY)
-                ));
+                lines.add(new Line(normalized));
             }
         }
     }
@@ -171,8 +142,6 @@ public final class DecorativeDependencyLines {
             for (String node : line.nodes()) {
                 buffer.writeUtf(node, 128);
             }
-            buffer.writeBoolean(line.outline());
-            buffer.writeBoolean(line.shadow());
         }
     }
 
@@ -187,11 +156,9 @@ public final class DecorativeDependencyLines {
             for (int node_index = 0; node_index < node_count; node_index++) {
                 nodes.add(buffer.readUtf(128));
             }
-            boolean outline = buffer.readBoolean();
-            boolean shadow = buffer.readBoolean();
             List<String> normalized = normalize(nodes);
             if (normalized.size() >= 2) {
-                lines.add(new Line(normalized, outline, shadow));
+                lines.add(new Line(normalized));
             }
         }
     }
@@ -207,12 +174,12 @@ public final class DecorativeDependencyLines {
         return List.copyOf(normalized);
     }
 
-    // 判断两条线是否连接了同一组节点
-    private static boolean sameNodes(List<String> first, List<String> second) {
-        return first.size() == second.size() && first.containsAll(second);
+    // 判断一条装饰线是否包含当前全部选择节点
+    private static boolean containsNodes(List<String> line_nodes, List<String> selected_nodes) {
+        return line_nodes.containsAll(selected_nodes);
     }
 
-    // 保存单条装饰线的有序节点和视觉样式
-    public record Line(List<String> nodes, boolean outline, boolean shadow) {
+    // 保存单条装饰线的有序节点
+    public record Line(List<String> nodes) {
     }
 }
