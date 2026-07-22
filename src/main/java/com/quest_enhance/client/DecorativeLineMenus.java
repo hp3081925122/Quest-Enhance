@@ -22,7 +22,7 @@ public final class DecorativeLineMenus {
     private DecorativeLineMenus() {
     }
 
-    // 当前右键对象属于有效多选路径时追加添加、删除和样式操作
+    // 当前右键对象属于有效多选路径时追加添加和删除操作
     public static List<ContextMenuItem> append(
             List<ContextMenuItem> context_menu,
             QuestScreen quest_screen,
@@ -51,9 +51,7 @@ public final class DecorativeLineMenus {
         }
 
         Chapter chapter = clicked_object.getChapter();
-        Optional<DecorativeDependencyLines.Line> existing_line = DecorativeDependencyLines.find(chapter, node_keys);
-
-        // 添加操作创建默认启用描边和阴影的折线
+        // 添加操作创建装饰折线
         context_menu.add(new ContextMenuItem(
                 Component.translatable("quest_enhance.decorative_line.add"),
                 Icons.ADD,
@@ -77,33 +75,6 @@ public final class DecorativeLineMenus {
                 }
         ));
 
-        // 已存在的线可以独立切换描边和阴影
-        existing_line.ifPresent(line -> {
-            context_menu.add(new ContextMenuItem(
-                    Component.translatable(line.outline()
-                            ? "quest_enhance.decorative_line.outline.disable"
-                            : "quest_enhance.decorative_line.outline.enable"),
-                    line.outline() ? Icons.ACCEPT : Icons.ACCEPT_GRAY,
-                    button -> {
-                        if (DecorativeDependencyLines.setOutline(chapter, node_keys, !line.outline())) {
-                            new EditObjectMessage(chapter).sendToServer();
-                            quest_screen.refreshQuestPanel();
-                        }
-                    }
-            ));
-            context_menu.add(new ContextMenuItem(
-                    Component.translatable(line.shadow()
-                            ? "quest_enhance.decorative_line.shadow.disable"
-                            : "quest_enhance.decorative_line.shadow.enable"),
-                    line.shadow() ? Icons.ACCEPT : Icons.ACCEPT_GRAY,
-                    button -> {
-                        if (DecorativeDependencyLines.setShadow(chapter, node_keys, !line.shadow())) {
-                            new EditObjectMessage(chapter).sendToServer();
-                            quest_screen.refreshQuestPanel();
-                        }
-                    }
-            ));
-        });
         return context_menu;
     }
 }

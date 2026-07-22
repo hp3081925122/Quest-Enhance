@@ -1,5 +1,10 @@
 package com.quest_enhance.mixin;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
@@ -8,6 +13,8 @@ import com.quest_enhance.client.VideoSupport;
 import com.quest_enhance.DecorativeDependencyLines;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
+import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.icon.ImageIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
@@ -23,7 +30,10 @@ import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
+import com.mojang.math.Axis;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -35,12 +45,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Mixin(value = QuestPanel.class, remap = false)
 public abstract class QuestPanelMixin {
+    @Unique
+    private static final ImageIcon quest_enhance$DECORATIVE_LINE_TEXTURE =
+            (ImageIcon) Icon.getIcon("quest_enhance:textures/gui/decorative_line.png");
+
     @Shadow
     @Final
     private QuestScreen questScreen;
@@ -154,6 +170,7 @@ public abstract class QuestPanelMixin {
 
         // 建立任务编号和辅助点 UUID 到当前画布按钮的映射
         Map<String, Widget> node_buttons = new HashMap<>();
+        Set<Widget> anchor_buttons = new HashSet<>();
         for (Widget widget : ((Panel) (Object) this).getWidgets()) {
             if (!(widget instanceof QuestPositionableButton positionable)) {
                 continue;
@@ -162,7 +179,10 @@ public abstract class QuestPanelMixin {
             if (movable instanceof Quest quest) {
                 node_buttons.put(DecorativeDependencyLines.questNode(quest.getMovableID()), widget);
             } else if (movable instanceof ChapterImage image) {
-                DecorativeAnchor.nodeKey(image).ifPresent(node_key -> node_buttons.put(node_key, widget));
+                DecorativeAnchor.nodeKey(image).ifPresent(node_key -> {
+                    node_buttons.put(node_key, widget);
+                    anchor_buttons.add(widget);
+                });
             }
         }
 
@@ -179,7 +199,11 @@ public abstract class QuestPanelMixin {
                 continue;
             }
 
-            // 每一对相邻节点绘制直线，描边和阴影使用独立图层
+            // 使用与原生依赖线相同的旋转纹理四边形连接相邻节点
+            quest_enhance$DECORATIVE_LINE_TEXTURE.bindTexture();
+            RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+            float half_width = 3.0F * this.questScreen.getZoom() / 16.0F;
             for (int index = 1; index < line_buttons.size(); index++) {
                 Widget previous = line_buttons.get(index - 1);
                 Widget current = line_buttons.get(index);
@@ -187,40 +211,70 @@ public abstract class QuestPanelMixin {
                 int previous_y = previous.getY() + previous.getHeight() / 2;
                 int current_x = current.getX() + current.getWidth() / 2;
                 int current_y = current.getY() + current.getHeight() / 2;
-                if (line.shadow()) {
-                    quest_enhance$draw_line(graphics, previous_x + 2, previous_y + 2, current_x + 2, current_y + 2, 5, 0x70000000);
+                float delta_x = current_x - previous_x;
+                float delta_y = current_y - previous_y;
+                float length = (float) Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+                if (length <= 0.0F) {
+                    continue;
                 }
-                if (line.outline()) {
-                    quest_enhance$draw_line(graphics, previous_x, previous_y, current_x, current_y, 5, 0xD0000000);
-                }
-                quest_enhance$draw_line(graphics, previous_x, previous_y, current_x, current_y, 3, 0xE050D8FF);
+                float start_offset = anchor_buttons.contains(previous)
+                        ? Math.min(previous.getWidth(), previous.getHeight()) / 2.0F
+                        : 0.0F;
+                float end_offset = anchor_buttons.contains(current)
+                        ? Math.min(current.getWidth(), current.getHeight()) / 2.0F
+                        : 0.0F;
+                int line_start_x = Math.round(previous_x + delta_x * start_offset / length);
+                int line_start_y = Math.round(previous_y + delta_y * start_offset / length);
+                int line_end_x = Math.round(current_x - delta_x * end_offset / length);
+                int line_end_y = Math.round(current_y - delta_y * end_offset / length);
+                quest_enhance$draw_textured_line(
+                        graphics, line_start_x, line_start_y, line_end_x, line_end_y,
+                        half_width, 0, 180, 180, 255
+                );
             }
         }
     }
 
-    // 以固定像素粗细绘制任意方向的直线图层
+    // 沿两点方向平铺无箭头纹理，并保留原生依赖线的末端渐暗效果
     @Unique
-    private static void quest_enhance$draw_line(
+    private static void quest_enhance$draw_textured_line(
             GuiGraphics graphics,
             int start_x,
             int start_y,
             int end_x,
             int end_y,
-            int thickness,
-            int color
+            float half_width,
+            int red,
+            int green,
+            int blue,
+            int alpha
     ) {
-        int steps = Math.max(Math.abs(end_x - start_x), Math.abs(end_y - start_y));
-        int radius = thickness / 2;
-        for (int step = 0; step <= steps; step++) {
-            int point_x = start_x + (end_x - start_x) * step / Math.max(1, steps);
-            int point_y = start_y + (end_y - start_y) * step / Math.max(1, steps);
-            graphics.fill(
-                    point_x - radius,
-                    point_y - radius,
-                    point_x + radius + 1,
-                    point_y + radius + 1,
-                    color
-            );
+        float delta_x = end_x - start_x;
+        float delta_y = end_y - start_y;
+        float length = (float) Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+        if (length <= 0.0F) {
+            return;
         }
+
+        // 将水平矩形旋转到两个节点的连线方向
+        graphics.pose().pushPose();
+        graphics.pose().translate(start_x, start_y, 0.0F);
+        graphics.pose().mulPose(Axis.ZP.rotation((float) Math.atan2(delta_y, delta_x)));
+        Matrix4f matrix = graphics.pose().last().pose();
+        float max_u = length / half_width / 2.0F;
+        int end_red = red * 3 / 4;
+        int end_green = green * 3 / 4;
+        int end_blue = blue * 3 / 4;
+
+        // 按当前版本的 POSITION_COLOR_TEX 顶点格式提交纹理矩形
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.getBuilder();
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
+        buffer.vertex(matrix, 0.0F, -half_width, 0.0F).color(red, green, blue, alpha).uv(max_u, 0.0F).endVertex();
+        buffer.vertex(matrix, 0.0F, half_width, 0.0F).color(red, green, blue, alpha).uv(max_u, 1.0F).endVertex();
+        buffer.vertex(matrix, length, half_width, 0.0F).color(end_red, end_green, end_blue, alpha).uv(0.0F, 1.0F).endVertex();
+        buffer.vertex(matrix, length, -half_width, 0.0F).color(end_red, end_green, end_blue, alpha).uv(0.0F, 0.0F).endVertex();
+        tesselator.end();
+        graphics.pose().popPose();
     }
 }
