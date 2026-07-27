@@ -98,6 +98,11 @@ public final class DescriptionComponentMenu {
                         button -> openVideoSelector(parent, editor)
             ));
         }
+        media.add(new ContextMenuItem(
+                Component.translatable("quest_enhance.gif.description.add"),
+                Icons.CAMERA,
+                button -> openGifSelector(parent, editor)
+        ));
 
         // 文字分组生成原版 JSON 组件，保持任务文件兼容
         List<ContextMenuItem> text = List.of(
@@ -809,6 +814,15 @@ public final class DescriptionComponentMenu {
                 DescriptionVideoConfigScreen.open(parent, editor, video_path);
             }
         });
+    }
+
+    // 打开资源包 GIF 选择器并插入动态图片标记
+    private static void openGifSelector(Panel parent, MultilineTextEditorAccess editor) {
+        GifSelectionScreen.open(parent, null, resource_location ->
+                editor.quest_enhance$insert_at_end_of_line(
+                        "\n" + QuestDescriptionGif.createMarkup(resource_location)
+                )
+        );
     }
 
     private enum TextAction {

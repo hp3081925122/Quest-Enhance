@@ -1,9 +1,12 @@
 package com.quest_enhance.client;
 
 import com.quest_enhance.QuestEnhance;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
@@ -11,17 +14,23 @@ import net.neoforged.fml.loading.FMLPaths;
 
 import java.nio.file.Path;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 public final class QuestVideoData {
     private static final String VIDEO_TAG = "quest_enhance_video";
     private static final String PLACEHOLDER_TAG = "quest_enhance_video_placeholder";
+    private static final String BUNDLED_VIDEO_PREFIX = "assets/";
+    private static final String BUNDLED_VIDEO_DIRECTORY = "videos/";
 
     private QuestVideoData() {
     }
@@ -71,11 +80,15 @@ public final class QuestVideoData {
         return updated_stack;
     }
 
-    // 将配置中的相对路径解析到整合包可分发的视频目录，并阻止路径越界
+    // 将配置路径解析为本地视频文件，资源包视频会提取到临时缓存供 VLC 读取
     public static Optional<Path> resolve(String video_path) {
         Optional<String> normalized_path = normalize(video_path);
         if (normalized_path.isEmpty()) {
             return Optional.empty();
+        }
+
+        if (normalized_path.get().startsWith(BUNDLED_VIDEO_PREFIX)) {
+            return resolveBundledVideo(normalized_path.get());
         }
 
         Path video_root = videoRoot();
@@ -158,34 +171,34 @@ public final class QuestVideoData {
         return copied_path;
     }
 
-    // 扫描视频目录并返回可直接写入任务配置的排序相对路径
+    // 扫描配置目录和模组资源包，并返回可直接写入任务配置的排序相对路径
     public static List<String> listAvailableVideos() {
+        Set<String> videos = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         Path video_root = videoRoot();
-        if (!Files.isDirectory(video_root)) {
-            return List.of();
+        if (Files.isDirectory(video_root)) {
+            try (var files = Files.walk(video_root)) {
+                files
+                        .filter(Files::isRegularFile)
+                        .filter(path -> isVideoFile(path.getFileName().toString()))
+                        .map(video_root::relativize)
+                        .map(path -> path.toString().replace('\\', '/'))
+                        .forEach(videos::add);
+            } catch (IOException exception) {
+                QuestEnhance.LOGGER.error("Failed to scan configured videos", exception);
+            }
         }
 
-        try (var files = Files.walk(video_root)) {
-            return files
-                    .filter(Files::isRegularFile)
-                    .filter(path -> {
-                        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
-                        return name.endsWith(".mp4")
-                                || name.endsWith(".webm")
-                                || name.endsWith(".mkv")
-                                || name.endsWith(".mov")
-                                || name.endsWith(".avi")
-                                || name.endsWith(".m4v")
-                                || name.endsWith(".ogv");
-                    })
-                    .map(video_root::relativize)
-                    .map(path -> path.toString().replace('\\', '/'))
-                    .sorted(String.CASE_INSENSITIVE_ORDER)
-                    .toList();
-        } catch (IOException exception) {
-            QuestEnhance.LOGGER.error("Failed to scan configured videos", exception);
-            return List.of();
-        }
+        // 资源包视频用 assets 前缀与原有配置目录路径区分
+        Minecraft.getInstance().getResourceManager()
+                .listResources(BUNDLED_VIDEO_DIRECTORY, location -> location.getNamespace().equals(QuestEnhance.MOD_ID)
+                        && !location.getPath().startsWith(BUNDLED_VIDEO_DIRECTORY + "ftb/")
+                        && isVideoFile(location.getPath()))
+                .keySet()
+                .stream()
+                .map(ResourceLocation::getPath)
+                .map(path -> BUNDLED_VIDEO_PREFIX + path.substring(BUNDLED_VIDEO_DIRECTORY.length()))
+                .forEach(videos::add);
+        return new ArrayList<>(videos);
     }
 
     // 统一保存为使用正斜杠的可分发相对路径
@@ -207,6 +220,53 @@ public final class QuestVideoData {
             return Optional.empty();
         }
         return Optional.of(path.toString().replace('\\', '/'));
+    }
+
+    // 从当前资源包读取模组内视频，并缓存为 VLC 可访问的真实文件
+    private static Optional<Path> resolveBundledVideo(String video_path) {
+        String relative_path = video_path.substring(BUNDLED_VIDEO_PREFIX.length());
+        ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
+                QuestEnhance.MOD_ID,
+                BUNDLED_VIDEO_DIRECTORY + relative_path
+        );
+        Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(resource_location);
+        if (resource.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String extension = relative_path.contains(".")
+                ? relative_path.substring(relative_path.lastIndexOf('.'))
+                : "";
+        Path cache_path = Path.of(System.getProperty("java.io.tmpdir"))
+                .resolve("quest_enhance_resource_videos")
+                .resolve(UUID.nameUUIDFromBytes(video_path.getBytes(StandardCharsets.UTF_8)) + extension)
+                .toAbsolutePath()
+                .normalize();
+        try {
+            Files.createDirectories(cache_path.getParent());
+            if (!Files.isRegularFile(cache_path)) {
+                try (InputStream input_stream = resource.get().open()) {
+                    Files.copy(input_stream, cache_path, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+            cache_path.toFile().deleteOnExit();
+            return Optional.of(cache_path);
+        } catch (IOException exception) {
+            QuestEnhance.LOGGER.error("Failed to extract bundled video resource {}", resource_location, exception);
+            return Optional.empty();
+        }
+    }
+
+    // 仅允许播放器后端支持的常见本地视频封装格式
+    private static boolean isVideoFile(String file_name) {
+        String name = file_name.toLowerCase(Locale.ROOT);
+        return name.endsWith(".mp4")
+                || name.endsWith(".webm")
+                || name.endsWith(".mkv")
+                || name.endsWith(".mov")
+                || name.endsWith(".avi")
+                || name.endsWith(".m4v")
+                || name.endsWith(".ogv");
     }
 
     // 返回客户端配置资源包中的固定视频根目录

@@ -1,8 +1,10 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
+import com.quest_enhance.client.ChapterCanvasGif;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
+import com.quest_enhance.client.GifConfig;
 import com.quest_enhance.client.VideoConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
@@ -78,8 +80,9 @@ public abstract class ChapterImageMixin {
         ChapterImage image = (ChapterImage) (Object) this;
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(image);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(image);
+        Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(image);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(image);
-        if (text_data.isEmpty() && video_data.isEmpty() && !decorative_anchor) {
+        if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
             return;
         }
 
@@ -125,6 +128,15 @@ public abstract class ChapterImageMixin {
                     value -> image.setImage(Icon.getIcon(value)),
                     ImageResourceConfig.NONE
             ).setNameKey("quest_enhance.chapter_video.cover");
+        } else if (gif_data.isPresent()) {
+            ChapterCanvasGif.GifData data = gif_data.get();
+            config.add(
+                    "gif",
+                    new GifConfig(),
+                    data.resource_location(),
+                    value -> ChapterCanvasGif.setGif(image, value),
+                    null
+            ).setNameKey("quest_enhance.gif.path");
         }
 
         // 特殊画布元素都允许直接修改位置
@@ -135,21 +147,27 @@ public abstract class ChapterImageMixin {
             return;
         }
 
-        // 文字和视频继续提供尺寸、旋转、颜色和显示条件
+        // 文字、视频和 GIF 继续提供尺寸、旋转、颜色和显示条件
         config.addDouble("width", this.width, value -> this.width = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("height", this.height, value -> this.height = value, 1.0, 0.0, Double.POSITIVE_INFINITY);
         config.addDouble("rotation", this.rotation, value -> this.rotation = value, 0.0, -180.0, 180.0);
         config.addColor("color", this.color, value -> this.color = value, Color4I.WHITE)
                 .setNameKey(text_data.isPresent()
                         ? "quest_enhance.chapter_text.color"
+                        : gif_data.isPresent()
+                        ? "quest_enhance.gif.color"
                         : "quest_enhance.chapter_video.color");
         config.addInt("order", this.order, value -> this.order = value, 0, Integer.MIN_VALUE, Integer.MAX_VALUE)
                 .setNameKey(text_data.isPresent()
                         ? "quest_enhance.chapter_text.order"
+                        : gif_data.isPresent()
+                        ? "quest_enhance.gif.order"
                         : "quest_enhance.chapter_video.order");
         config.addInt("alpha", this.alpha, value -> this.alpha = value, 255, 0, 255)
                 .setNameKey(text_data.isPresent()
                         ? "quest_enhance.chapter_text.alpha"
+                        : gif_data.isPresent()
+                        ? "quest_enhance.gif.alpha"
                         : "quest_enhance.chapter_video.alpha");
         config.addList("hover", this.hover, new StringConfig(), "");
         config.addBool("dev", this.editorsOnly, value -> this.editorsOnly = value, false);
@@ -173,6 +191,7 @@ public abstract class ChapterImageMixin {
         ChapterImage image = (ChapterImage) (Object) this;
         if (ChapterCanvasText.getTextData(image).isPresent()
                 || ChapterCanvasVideo.getVideoData(image).isPresent()
+                || ChapterCanvasGif.getGifData(image).isPresent()
                 || DecorativeAnchor.isAnchor(image)) {
             callback_info.setReturnValue(false);
         }
@@ -185,6 +204,8 @@ public abstract class ChapterImageMixin {
                 .ifPresent(data -> callback_info.setReturnValue(data.component()));
         ChapterCanvasVideo.getVideoData((ChapterImage) (Object) this)
                 .ifPresent(data -> callback_info.setReturnValue(Component.literal(data.path())));
+        ChapterCanvasGif.getGifData((ChapterImage) (Object) this)
+                .ifPresent(data -> callback_info.setReturnValue(Component.literal(data.resource_location().toString())));
         if (DecorativeAnchor.isAnchor((ChapterImage) (Object) this)) {
             callback_info.setReturnValue(Component.translatable("quest_enhance.decorative_anchor"));
         }
