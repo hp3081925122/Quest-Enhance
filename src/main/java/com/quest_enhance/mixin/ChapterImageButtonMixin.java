@@ -2,12 +2,12 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.ChapterCanvasGif;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
 import com.quest_enhance.client.DecorativeLineMenus;
+import com.quest_enhance.client.KubeJSClickEventBridge;
 import com.quest_enhance.client.VideoSupport;
-import com.quest_enhance.kubejs.QuestEnhanceKubeJSEvents;
-import com.quest_enhance.kubejs.QuestEnhanceTextClickEvent;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
@@ -27,7 +27,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.fml.ModList;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -62,19 +61,23 @@ public abstract class ChapterImageButtonMixin {
     private void quest_enhance$open_special_edit_screen(CallbackInfo callback_info) {
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(this.chapterImage);
+        Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(this.chapterImage);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(this.chapterImage);
-        if (text_data.isEmpty() && video_data.isEmpty() && !decorative_anchor) {
+        if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
             return;
         }
 
         Component object_title = text_data.isPresent()
                 ? text_data.get().component()
                 : video_data.<Component>map(data -> Component.literal(data.path()))
+                .or(() -> gif_data.map(data -> Component.literal(data.resource_location().toString())))
                 .orElseGet(() -> Component.translatable("quest_enhance.decorative_anchor"));
         String type_key = text_data.isPresent()
                 ? "quest_enhance.chapter_text"
                 : video_data.isPresent()
                 ? "quest_enhance.chapter_video"
+                : gif_data.isPresent()
+                ? "quest_enhance.chapter_gif"
                 : "quest_enhance.decorative_anchor";
 
         // 保存时继续发送 FTB 原生章节编辑消息并刷新当前按钮
@@ -120,6 +123,7 @@ public abstract class ChapterImageButtonMixin {
     private String quest_enhance$hide_special_click(ChapterImage image, MouseButton button) {
         return ChapterCanvasText.getTextData(image).isPresent()
                 || ChapterCanvasVideo.getVideoData(image).isPresent()
+                || ChapterCanvasGif.getGifData(image).isPresent()
                 || DecorativeAnchor.isAnchor(image)
                 ? ""
                 : image.getClick();
@@ -153,20 +157,18 @@ public abstract class ChapterImageButtonMixin {
             return;
         }
 
-        ChapterCanvasText.getTextData(this.chapterImage).ifPresent(data -> {
-            if (ModList.get().isLoaded("kubejs")) {
-                QuestEnhanceKubeJSEvents.CLICK.post(new QuestEnhanceTextClickEvent(
-                        data.text(),
-                        Long.toUnsignedString(this.chapterImage.getChapter().getId()),
-                        this.chapterImage.getX(),
-                        this.chapterImage.getY(),
-                        this.chapterImage.getWidth(),
-                        this.chapterImage.getHeight()
-                ));
-            }
+        Optional<ChapterCanvasText.TextData> textData = ChapterCanvasText.getTextData(this.chapterImage);
+        if (textData.isPresent()) {
+            ChapterCanvasText.TextData data = textData.get();
+            KubeJSClickEventBridge.dispatch(
+                    data.text(),
+                    Long.toUnsignedString(this.chapterImage.getChapter().getId()),
+                    this.chapterImage.getX(),
+                    this.chapterImage.getY(),
+                    this.chapterImage.getWidth(),
+                    this.chapterImage.getHeight()
+            );
             callback_info.cancel();
-        });
-        if (callback_info.isCancelled()) {
             return;
         }
 
@@ -189,8 +191,9 @@ public abstract class ChapterImageButtonMixin {
     ) {
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(this.chapterImage);
+        Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(this.chapterImage);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(this.chapterImage);
-        if (text_data.isEmpty() && video_data.isEmpty() && !decorative_anchor) {
+        if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
             return;
         }
 
@@ -216,6 +219,33 @@ public abstract class ChapterImageButtonMixin {
                 int selection_alpha = (int) (190.0 + Math.sin(System.currentTimeMillis() * 0.003) * 50.0);
                 circle.getOutline().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
                 circle.getBackground().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
+            }
+            callback_info.cancel();
+            return;
+        }
+
+        // GIF 背景逐帧更新动态纹理，并沿用原生章节图片的变换和选中效果
+        if (gif_data.isPresent()) {
+            QuestScreenAccessor screen = (QuestScreenAccessor) (Object) this.questScreen;
+            boolean transparent = !this.chapterImage.shouldShowImage(screen.quest_enhance$get_file().selfTeamData);
+            int alpha = transparent ? 100 : this.chapterImage.getAlpha();
+            Icon frame = ChapterCanvasGif.getCurrentFrame(gif_data.get().resource_location()).orElse(Color4I.DARK_GRAY);
+            Icon tinted_frame = frame.withTint(this.chapterImage.getColor().withAlpha(alpha));
+            PoseStack pose_stack = graphics.pose();
+            pose_stack.pushPose();
+            if (this.chapterImage.isAlignToCorner()) {
+                pose_stack.translate(x, y, 0.0F);
+                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
+                tinted_frame.draw(graphics, 0, 0, width, height);
+            } else {
+                pose_stack.translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
+                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
+                tinted_frame.draw(graphics, -width / 2, -height / 2, width, height);
+            }
+            pose_stack.popPose();
+            if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
+                int selection_alpha = (int) (45.0 + Math.sin(System.currentTimeMillis() * 0.003) * 20.0);
+                Color4I.WHITE.withAlpha(selection_alpha).draw(graphics, x, y, width, height);
             }
             callback_info.cancel();
             return;

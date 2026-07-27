@@ -2,6 +2,7 @@ package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClientConfig;
 import com.quest_enhance.client.QuestDescriptionTable;
+import com.quest_enhance.client.QuestDescriptionGif;
 import com.quest_enhance.client.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
@@ -35,6 +36,7 @@ public final class QuestEnhance {
                 MOD_ID + "-client.toml"
         );
         loading_context.getModEventBus().addListener(this::addPackFinder);
+        loading_context.getModEventBus().addListener(QuestDescriptionGif::clientSetup);
         loading_context.getModEventBus().addListener(QuestDescriptionVideo::clientSetup);
         loading_context.getModEventBus().addListener(QuestDescriptionTable::clientSetup);
     }

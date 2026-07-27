@@ -7,8 +7,10 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.client.ChapterClipboardImage;
+import com.quest_enhance.client.ChapterCanvasGif;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
+import com.quest_enhance.client.GifSelectionScreen;
 import com.quest_enhance.client.TaskTypeSelectionScreen;
 import com.quest_enhance.client.VideoSelectionScreen;
 import com.quest_enhance.client.VideoSupport;
@@ -118,7 +120,19 @@ public abstract class QuestPanelMixin {
                         new EditObjectMessage(chapter).sendToServer();
                         this.questScreen.refreshQuestPanel();
                     }
-                }
+            }
+        ));
+
+        // 从当前资源包选择 GIF 并创建可播放的章节画布对象
+        context_menu.add(insert_index++, new ContextMenuItem(
+                Component.translatable("quest_enhance.chapter_gif"),
+                Icons.CAMERA,
+                button -> GifSelectionScreen.open(button.getParent(), null, resource_location -> {
+                    ChapterImage image = ChapterCanvasGif.create(chapter, resource_location, x, y);
+                    chapter.addImage(image);
+                    new EditObjectMessage(chapter).sendToServer();
+                    this.questScreen.refreshQuestPanel();
+                })
         ));
 
         // 创建可参与多选、移动和删除的装饰线辅助点
@@ -222,7 +236,7 @@ public abstract class QuestPanelMixin {
             }
         }
 
-        // 按保存顺序连接节点，辅助点只改变路径而不显示为玩家可见内容
+        // 将首个选中的节点作为中心，连接其余所有节点
         for (DecorativeDependencyLines.Line line : DecorativeDependencyLines.get(chapter)) {
             List<Widget> line_buttons = new ArrayList<>(line.nodes().size());
             for (String node_key : line.nodes()) {
@@ -240,8 +254,9 @@ public abstract class QuestPanelMixin {
             RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             float half_width = 3.0F * this.questScreen.getZoom() / 16.0F;
+            Widget center = line_buttons.get(0);
             for (int index = 1; index < line_buttons.size(); index++) {
-                Widget previous = line_buttons.get(index - 1);
+                Widget previous = center;
                 Widget current = line_buttons.get(index);
                 int previous_x = previous.getX() + previous.getWidth() / 2;
                 int previous_y = previous.getY() + previous.getHeight() / 2;
