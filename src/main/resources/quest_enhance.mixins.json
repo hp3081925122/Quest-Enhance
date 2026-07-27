@@ -16,6 +16,7 @@
     "MultilineTextEditorToolbarMixin",
     "QuestDescriptionFieldMixin",
     "QuestButtonMixin",
+    "QuestLinkButtonAccessor",
     "QuestConfigMixin",
     "QuestObjectBaseAccessor",
     "QuestPanelMixin",

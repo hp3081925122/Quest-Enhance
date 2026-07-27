@@ -8,8 +8,10 @@ import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.DecorativeDependencyLines;
+import com.quest_enhance.client.ChapterClipboardImage;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
+import com.quest_enhance.client.TaskTypeSelectionScreen;
 import com.quest_enhance.client.VideoSelectionScreen;
 import com.quest_enhance.client.VideoSupport;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
@@ -29,6 +31,7 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestLink;
 import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.GuiGraphics;
@@ -82,13 +85,42 @@ public abstract class QuestPanelMixin {
         double y = this.questY;
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
 
-        // 将原生图像项和增强项移动到菜单顶部，避免窗口化小分辨率裁掉底部选项
+        // 保留原生逐项任务类型菜单，并在菜单构建完成后收集全部可点击项
+        int task_item_count = Math.min(TaskTypes.TYPES.size(), context_menu.size());
+        List<ContextMenuItem> all_items = new ArrayList<>();
+
+        // 在保留原任务菜单的基础上额外提供完整选项列表
         int insert_index = 0;
-        int image_index = TaskTypes.TYPES.size();
+        ContextMenuItem view_all_item = new ContextMenuItem(
+                Component.translatable("quest_enhance.chapter_task_view_all"),
+                Icons.ADD,
+                button -> TaskTypeSelectionScreen.open(button.getParent(), all_items)
+        );
+        context_menu.add(insert_index++, view_all_item);
+        int image_index = task_item_count + insert_index;
         if (image_index < context_menu.size()) {
             ContextMenuItem image_item = context_menu.remove(image_index);
             context_menu.add(insert_index++, image_item);
         }
+
+        // 将 Windows 剪贴板中的图片直接放到当前鼠标所在画布位置
+        context_menu.add(insert_index++, new ContextMenuItem(
+                Component.translatable("quest_enhance.chapter_clipboard_image"),
+                Icons.CAMERA,
+                button -> {
+                    ChapterImage image = ChapterClipboardImage.paste(
+                            chapter,
+                            x,
+                            y,
+                            this.questScreen.getQuestButtonSize()
+                    );
+                    if (image != null) {
+                        chapter.addImage(image);
+                        EditObjectMessage.sendToServer(chapter);
+                        this.questScreen.refreshQuestPanel();
+                    }
+                }
+        ));
 
         // 创建可参与多选、移动和删除的装饰线辅助点
         context_menu.add(insert_index++, new ContextMenuItem(
@@ -149,6 +181,8 @@ public abstract class QuestPanelMixin {
                     })
             ));
         }
+        all_items.addAll(context_menu);
+        all_items.remove(view_all_item);
         return context_menu;
     }
 
@@ -179,6 +213,8 @@ public abstract class QuestPanelMixin {
             Movable movable = positionable.moveAndDeleteFocus();
             if (movable instanceof Quest quest) {
                 node_buttons.put(DecorativeDependencyLines.questNode(quest.getMovableID()), widget);
+            } else if (movable instanceof QuestLink link) {
+                node_buttons.put(DecorativeDependencyLines.questLinkNode(link.getMovableID()), widget);
             } else if (movable instanceof ChapterImage image) {
                 DecorativeAnchor.nodeKey(image).ifPresent(node_key -> {
                     node_buttons.put(node_key, widget);
