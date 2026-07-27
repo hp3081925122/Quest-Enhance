@@ -19,6 +19,7 @@ public final class DecorativeDependencyLines {
     private static final String NBT_KEY = "quest_enhance_decorative_lines";
     private static final String NODES_KEY = "nodes";
     private static final String QUEST_PREFIX = "q:";
+    private static final String QUEST_LINK_PREFIX = "l:";
     private static final Map<Chapter, List<Line>> LINES = new WeakHashMap<>();
 
     private DecorativeDependencyLines() {
@@ -34,6 +35,11 @@ public final class DecorativeDependencyLines {
         return QUEST_PREFIX + Long.toUnsignedString(quest_id, 16);
     }
 
+    // 将链接任务编号转换为独立于真实任务的节点键
+    public static String questLinkNode(long link_id) {
+        return QUEST_LINK_PREFIX + Long.toUnsignedString(link_id, 16);
+    }
+
     // 添加一条按选择顺序排列的多节点装饰线
     public static boolean add(Chapter chapter, List<String> node_keys) {
         List<String> normalized = normalize(node_keys);
@@ -41,6 +47,7 @@ public final class DecorativeDependencyLines {
             return false;
         }
         get(chapter).add(new Line(normalized));
+        QuestEnhance.LOGGER.debug("Added decorative line: selectedNodes={}", normalized);
         return true;
     }
 

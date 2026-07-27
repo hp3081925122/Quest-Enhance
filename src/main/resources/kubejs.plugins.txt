@@ -1,0 +1,2 @@
+# 仅在客户端加载，避免专用服务器加载画布点击事件
+com.quest_enhance.kubejs.QuestEnhanceKubeJSPlugin client

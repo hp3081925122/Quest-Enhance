@@ -11,7 +11,9 @@ import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
+import dev.ftb.mods.ftbquests.client.gui.quests.QuestLinkButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
+import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.client.Minecraft;
@@ -126,7 +128,10 @@ public abstract class QuestButtonMixin {
     private List<ContextMenuItem> quest_enhance$add_decorative_line_menu(
         List<ContextMenuItem> context_menu
     ) {
-        return DecorativeLineMenus.append(context_menu, this.questScreen, this.quest);
+        Movable clicked_object = (Object) this instanceof QuestLinkButton
+                ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
+                : this.quest;
+        return DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型

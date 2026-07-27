@@ -5,6 +5,7 @@ import com.quest_enhance.DecorativeDependencyLines;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import org.spongepowered.asm.mixin.Mixin;
@@ -56,6 +57,18 @@ public abstract class ChapterMixin {
         DecorativeDependencyLines.removeNode(
                 (Chapter) (Object) this,
                 DecorativeDependencyLines.questNode(quest.getMovableID())
+        );
+    }
+
+    // 删除链接任务时同步清理装饰线路径中的链接节点
+    @Inject(method = "removeQuestLink", at = @At("HEAD"))
+    private void quest_enhance$remove_deleted_quest_link_from_lines(
+            QuestLink link,
+            CallbackInfo callback_info
+    ) {
+        DecorativeDependencyLines.removeNode(
+                (Chapter) (Object) this,
+                DecorativeDependencyLines.questLinkNode(link.getMovableID())
         );
     }
 

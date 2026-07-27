@@ -11,6 +11,7 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -34,11 +35,13 @@ public final class DecorativeLineMenus {
             return context_menu;
         }
 
-        // 只允许任务和辅助点参与折线路径，并保留玩家的选择顺序
+        // 只允许任务、链接任务和辅助点参与折线路径，并保留玩家的选择顺序
         List<String> node_keys = new ArrayList<>(selected_objects.size());
         for (Movable object : selected_objects) {
             if (object instanceof Quest quest) {
                 node_keys.add(DecorativeDependencyLines.questNode(quest.getMovableID()));
+            } else if (object instanceof QuestLink link) {
+                node_keys.add(DecorativeDependencyLines.questLinkNode(link.getMovableID()));
             } else if (object instanceof ChapterImage image) {
                 Optional<String> anchor_key = DecorativeAnchor.nodeKey(image);
                 if (anchor_key.isEmpty()) {
@@ -51,8 +54,14 @@ public final class DecorativeLineMenus {
         }
 
         Chapter chapter = clicked_object.getChapter();
+        // 将装饰线操作插入原生删除项之后、快捷键提示之前
+        int insertion_index = context_menu.indexOf(ContextMenuItem.SEPARATOR);
+        if (insertion_index < 0) {
+            insertion_index = context_menu.size();
+        }
+
         // 添加操作创建装饰折线
-        context_menu.add(new ContextMenuItem(
+        context_menu.add(insertion_index, new ContextMenuItem(
                 Component.translatable("quest_enhance.decorative_line.add"),
                 Icons.ADD,
                 button -> {
@@ -64,7 +73,7 @@ public final class DecorativeLineMenus {
         ));
 
         // 删除操作按节点集合匹配，重新选择顺序不会影响取消
-        context_menu.add(new ContextMenuItem(
+        context_menu.add(insertion_index + 1, new ContextMenuItem(
                 Component.translatable("quest_enhance.decorative_line.remove"),
                 Icons.REMOVE,
                 button -> {

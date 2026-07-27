@@ -6,6 +6,8 @@ import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
 import com.quest_enhance.client.DecorativeLineMenus;
 import com.quest_enhance.client.VideoSupport;
+import com.quest_enhance.kubejs.QuestEnhanceKubeJSEvents;
+import com.quest_enhance.kubejs.QuestEnhanceTextClickEvent;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
@@ -25,6 +27,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraftforge.fml.ModList;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -139,10 +142,31 @@ public abstract class ChapterImageButtonMixin {
                 : context_menu;
     }
 
-    // 普通左键点击视频背景时打开播放器，编辑器快捷键仍交给 FTB 处理
+    // 普通左键点击文字时投递可选 KubeJS 事件，点击视频背景时打开播放器
     @Inject(method = "onClicked", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$open_chapter_video(MouseButton button, CallbackInfo callback_info) {
         if (!button.isLeft() || Screen.hasControlDown() || Screen.hasAltDown()) {
+            return;
+        }
+
+        if (((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_file().canEdit()) {
+            return;
+        }
+
+        ChapterCanvasText.getTextData(this.chapterImage).ifPresent(data -> {
+            if (ModList.get().isLoaded("kubejs")) {
+                QuestEnhanceKubeJSEvents.CLICK.post(new QuestEnhanceTextClickEvent(
+                        data.text(),
+                        Long.toUnsignedString(this.chapterImage.getChapter().getId()),
+                        this.chapterImage.getX(),
+                        this.chapterImage.getY(),
+                        this.chapterImage.getWidth(),
+                        this.chapterImage.getHeight()
+                ));
+            }
+            callback_info.cancel();
+        });
+        if (callback_info.isCancelled()) {
             return;
         }
 
