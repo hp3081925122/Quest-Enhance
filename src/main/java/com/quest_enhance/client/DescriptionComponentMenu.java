@@ -443,8 +443,8 @@ public final class DescriptionComponentMenu {
             MultilineTextEditorAccess editor,
             ItemStack selected_stack
     ) {
-        // 图标只保存物品类型，避免把背包物品的临时 NBT 写入任务描述
-        ItemStack icon_stack = new ItemStack(selected_stack.getItem());
+        // 图标保留完整 NBT、耐久和数量
+        ItemStack icon_stack = selected_stack.copy();
         openItemIconConfig(
                 parent,
                 ItemIcon.getItemIcon(icon_stack).toString(),
