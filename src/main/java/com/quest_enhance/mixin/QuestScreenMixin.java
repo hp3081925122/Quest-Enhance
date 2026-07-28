@@ -1,9 +1,9 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
-import com.quest_enhance.client.ChapterClipboardImage;
-import com.quest_enhance.client.QuestEnhanceClipboardEntry;
-import com.quest_enhance.client.QuestScreenEditHistory;
+import com.quest_enhance.client.clipboard.ChapterClipboardImage;
+import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
+import com.quest_enhance.client.history.QuestScreenEditHistory;
 import com.mojang.datafixers.util.Pair;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.Widget;

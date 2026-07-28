@@ -1,7 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
-import com.quest_enhance.client.QuestDescriptionWidthContext;
+import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;

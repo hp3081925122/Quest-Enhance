@@ -1,11 +1,11 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
-import com.quest_enhance.client.ChapterCanvasGif;
-import com.quest_enhance.client.ChapterCanvasText;
-import com.quest_enhance.client.ChapterCanvasVideo;
-import com.quest_enhance.client.GifConfig;
-import com.quest_enhance.client.VideoConfig;
+import com.quest_enhance.client.canvas.ChapterCanvasGif;
+import com.quest_enhance.client.canvas.ChapterCanvasText;
+import com.quest_enhance.client.canvas.ChapterCanvasVideo;
+import com.quest_enhance.client.media.GifConfig;
+import com.quest_enhance.client.media.VideoConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
 import dev.ftb.mods.ftblibrary.config.NameMap;

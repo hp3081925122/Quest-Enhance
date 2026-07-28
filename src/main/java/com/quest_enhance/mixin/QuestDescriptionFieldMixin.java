@@ -1,9 +1,9 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
-import com.quest_enhance.client.QuestDescriptionTable;
-import com.quest_enhance.client.QuestDescriptionVideo;
-import com.quest_enhance.client.VideoSupport;
+import com.quest_enhance.client.description.QuestDescriptionTable;
+import com.quest_enhance.client.description.QuestDescriptionVideo;
+import com.quest_enhance.client.media.VideoSupport;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
 import org.spongepowered.asm.mixin.Mixin;

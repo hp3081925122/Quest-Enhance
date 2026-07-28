@@ -1,7 +1,7 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.QuestDescriptionWidthContext;
-import com.quest_enhance.client.DescriptionComponentMenu;
+import com.quest_enhance.client.description.DescriptionComponentMenu;
+import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.Widget;

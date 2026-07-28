@@ -1,6 +1,6 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.QuestDescriptionTable;
+import com.quest_enhance.client.description.QuestDescriptionTable;
 import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;

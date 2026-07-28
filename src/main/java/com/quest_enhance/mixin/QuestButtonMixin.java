@@ -1,11 +1,11 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.DecorativeLineMenus;
-import com.quest_enhance.client.QuestEnhanceClientConfig;
-import com.quest_enhance.client.KillTaskEntityPreview;
-import com.quest_enhance.client.QuestEntityModel;
-import com.quest_enhance.client.QuestVideoData;
-import com.quest_enhance.client.VideoSupport;
+import com.quest_enhance.client.canvas.DecorativeLineMenus;
+import com.quest_enhance.client.config.QuestEnhanceClientConfig;
+import com.quest_enhance.client.media.VideoSupport;
+import com.quest_enhance.client.quest.KillTaskEntityPreview;
+import com.quest_enhance.client.quest.QuestEntityModel;
+import com.quest_enhance.client.quest.QuestVideoData;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Theme;
