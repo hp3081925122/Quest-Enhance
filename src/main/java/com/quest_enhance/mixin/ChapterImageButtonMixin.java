@@ -1,7 +1,6 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
-import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.ChapterCanvasGif;
 import com.quest_enhance.client.ChapterCanvasText;
 import com.quest_enhance.client.ChapterCanvasVideo;
@@ -21,6 +20,7 @@ import dev.ftb.mods.ftbquests.client.gui.quests.ChapterImageButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
+import dev.ftb.mods.ftbquests.quest.ImageClickAction;
 import dev.ftb.mods.ftbquests.quest.QuestShape;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -42,12 +42,6 @@ import java.util.Optional;
 
 @Mixin(value = ChapterImageButton.class, remap = false)
 public abstract class ChapterImageButtonMixin {
-    @Unique
-    private boolean quest_enhance$anchor_selected;
-
-    @Unique
-    private boolean quest_enhance$anchor_selection_state_known;
-
     @Shadow
     @Final
     private QuestScreen questScreen;
@@ -56,14 +50,46 @@ public abstract class ChapterImageButtonMixin {
     @Final
     private ChapterImage chapterImage;
 
-    // 为画布文字、视频或辅助点打开标题和类型都正确的原生属性编辑页
-    @Inject(method = "openEditScreen", at = @At("HEAD"), cancellable = true)
-    private void quest_enhance$open_special_edit_screen(CallbackInfo callback_info) {
+    // 判断图片是否由任务书增强作为可交互画布元素管理
+    @Unique
+    private boolean quest_enhance$is_special_canvas_image() {
+        return DecorativeAnchor.isAnchor(this.chapterImage)
+                || ChapterCanvasText.getTextData(this.chapterImage).isPresent()
+                || ChapterCanvasVideo.getVideoData(this.chapterImage).isPresent()
+                || ChapterCanvasGif.getGifData(this.chapterImage).isPresent();
+    }
+
+    // 新版 FTB 会忽略无点击动作的章节图片，允许特殊画布元素接收鼠标命中
+    @Redirect(
+            method = {"checkMouseOver", "mousePressed"},
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/quest/ImageClickAction;isNone()Z"
+            )
+    )
+    private boolean quest_enhance$allow_special_canvas_image_click(ImageClickAction click_action) {
+        return click_action.isNone() && !this.quest_enhance$is_special_canvas_image();
+    }
+
+    // 拦截新版图片编辑操作，为特殊画布元素打开对应属性页
+    @Redirect(
+            method = "onClicked",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;onEditButtonClicked(Ljava/lang/Runnable;Lnet/minecraft/network/chat/Component;)V"
+            )
+    )
+    private void quest_enhance$open_special_edit_screen(
+            ChapterImage image,
+            Runnable callback,
+            Component title
+    ) {
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(this.chapterImage);
         Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(this.chapterImage);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(this.chapterImage);
         if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
+            image.onEditButtonClicked(callback, title);
             return;
         }
 
@@ -80,13 +106,12 @@ public abstract class ChapterImageButtonMixin {
                 ? "quest_enhance.chapter_gif"
                 : "quest_enhance.decorative_anchor";
 
-        // 保存时继续发送 FTB 原生章节编辑消息并刷新当前按钮
-        ChapterImageButton button = (ChapterImageButton) (Object) this;
+        // 保存时继续发送 FTB 原生章节编辑消息并刷新任务书
         ConfigGroup group = new ConfigGroup("ftbquests", accepted -> {
             if (accepted) {
-                EditObjectMessage.sendToServer(this.chapterImage.getChapter());
+                EditObjectMessage.sendToServer(this.chapterImage);
             }
-            button.run();
+            callback.run();
         }) {
             // 用实际内容和特殊元素类型替换原生的颜色值与“图片”类型
             @Override
@@ -109,24 +134,6 @@ public abstract class ChapterImageButtonMixin {
                 return group.getName();
             }
         }.openGui();
-        callback_info.cancel();
-    }
-
-    // 阻止原生左键把特殊画布标记当作普通链接执行
-    @Redirect(
-            method = "onClicked",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;getClick()Ljava/lang/String;"
-            )
-    )
-    private String quest_enhance$hide_special_click(ChapterImage image, MouseButton button) {
-        return ChapterCanvasText.getTextData(image).isPresent()
-                || ChapterCanvasVideo.getVideoData(image).isPresent()
-                || ChapterCanvasGif.getGifData(image).isPresent()
-                || DecorativeAnchor.isAnchor(image)
-                ? ""
-                : image.getClick();
     }
 
     // 在已选辅助点的右键菜单中加入与任务相同的装饰线操作
@@ -203,15 +210,6 @@ public abstract class ChapterImageButtonMixin {
             QuestShape circle = QuestShape.get("circle");
             boolean selected = screen.quest_enhance$get_file().canEdit()
                     && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
-            if (!this.quest_enhance$anchor_selection_state_known || selected != this.quest_enhance$anchor_selected) {
-                QuestEnhance.LOGGER.debug(
-                        "Decorative anchor selection changed: node={}, selected={}",
-                        DecorativeAnchor.nodeKey(this.chapterImage).orElse("unknown"),
-                        selected
-                );
-                this.quest_enhance$anchor_selected = selected;
-                this.quest_enhance$anchor_selection_state_known = true;
-            }
             circle.getShape().withColor(Color4I.DARK_GRAY).draw(graphics, x, y, width, height);
             circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)).draw(graphics, x, y, width, height);
             circle.getOutline().withColor(Color4I.rgb(0x808080)).draw(graphics, x, y, width, height);

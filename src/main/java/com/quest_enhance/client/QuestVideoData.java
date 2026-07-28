@@ -30,7 +30,7 @@ public final class QuestVideoData {
     private static final String VIDEO_TAG = "quest_enhance_video";
     private static final String PLACEHOLDER_TAG = "quest_enhance_video_placeholder";
     private static final String BUNDLED_VIDEO_PREFIX = "assets/";
-    private static final String BUNDLED_VIDEO_DIRECTORY = "videos/";
+    private static final String BUNDLED_VIDEO_DIRECTORY = "videos";
 
     private QuestVideoData() {
     }
@@ -189,15 +189,23 @@ public final class QuestVideoData {
         }
 
         // 资源包视频用 assets 前缀与原有配置目录路径区分
-        Minecraft.getInstance().getResourceManager()
+        int configured_video_count = videos.size();
+        List<String> bundled_videos = Minecraft.getInstance().getResourceManager()
                 .listResources(BUNDLED_VIDEO_DIRECTORY, location -> location.getNamespace().equals(QuestEnhance.MOD_ID)
-                        && !location.getPath().startsWith(BUNDLED_VIDEO_DIRECTORY + "ftb/")
+                        && !location.getPath().startsWith(BUNDLED_VIDEO_DIRECTORY + "/ftb/")
                         && isVideoFile(location.getPath()))
                 .keySet()
                 .stream()
                 .map(ResourceLocation::getPath)
-                .map(path -> BUNDLED_VIDEO_PREFIX + path.substring(BUNDLED_VIDEO_DIRECTORY.length()))
-                .forEach(videos::add);
+                .map(path -> BUNDLED_VIDEO_PREFIX + path.substring(BUNDLED_VIDEO_DIRECTORY.length() + 1))
+                .toList();
+        videos.addAll(bundled_videos);
+        QuestEnhance.LOGGER.debug(
+                "Scanned available videos: configured={}, bundled={}, total={}",
+                configured_video_count,
+                bundled_videos.size(),
+                videos.size()
+        );
         return new ArrayList<>(videos);
     }
 
@@ -227,7 +235,7 @@ public final class QuestVideoData {
         String relative_path = video_path.substring(BUNDLED_VIDEO_PREFIX.length());
         ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
                 QuestEnhance.MOD_ID,
-                BUNDLED_VIDEO_DIRECTORY + relative_path
+                BUNDLED_VIDEO_DIRECTORY + "/" + relative_path
         );
         Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(resource_location);
         if (resource.isEmpty()) {

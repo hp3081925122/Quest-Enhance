@@ -25,6 +25,14 @@ public interface QuestScreenAccessor {
     @Accessor("selectedObjects")
     List<Movable> quest_enhance$get_selected_objects();
 
+    // 读取原生对象移动模式是否已启动
+    @Accessor("movingObjects")
+    boolean quest_enhance$is_moving_objects();
+
+    // 更新原生对象移动模式状态
+    @Accessor("movingObjects")
+    void quest_enhance$set_moving_objects(boolean moving_objects);
+
     // 调用 FTB 原生网格吸附坐标计算，保持单对象和多对象粘贴位置一致
     @Invoker("getSnappedXY")
     Pair<Double, Double> quest_enhance$invoke_get_snapped_xy();

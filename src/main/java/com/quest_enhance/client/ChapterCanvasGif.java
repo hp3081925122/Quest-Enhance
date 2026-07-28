@@ -43,7 +43,7 @@ public final class ChapterCanvasGif {
 
     // 判断章节图片是否是本模组保存的 GIF 并读取资源标识
     public static Optional<GifData> getGifData(ChapterImage image) {
-        String click = image.getClick();
+        String click = ChapterImageClickData.get(image);
         if (!click.startsWith(PREFIX)) {
             return Optional.empty();
         }
@@ -53,14 +53,14 @@ public final class ChapterCanvasGif {
 
     // 修改 GIF 时继续复用 FTB 原生点击字段保存资源标识
     public static void setGif(ChapterImage image, ResourceLocation resource_location) {
-        ((ChapterImageAccessor) (Object) image).quest_enhance$set_click(PREFIX + resource_location);
+        ChapterImageClickData.set(image, PREFIX + resource_location);
     }
 
     // 创建按 GIF 原始比例缩放的章节画布对象
     public static ChapterImage create(Chapter chapter, ResourceLocation resource_location, double x, double y) {
         double aspect_ratio = getAspectRatio(resource_location).orElse(1.0D);
         double width = 4.0D;
-        ChapterImage image = new ChapterImage(chapter)
+        ChapterImage image = new ChapterImage(0L, chapter)
                 .setPosition(x, y)
                 .setImage(Color4I.DARK_GRAY);
         ChapterImageAccessor accessor = (ChapterImageAccessor) (Object) image;

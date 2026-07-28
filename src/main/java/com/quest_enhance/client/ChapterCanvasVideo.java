@@ -15,7 +15,7 @@ public final class ChapterCanvasVideo {
 
     // 判断章节图片是否是本模组保存的视频背景并读取相对路径
     public static Optional<VideoData> getVideoData(ChapterImage image) {
-        String click = image.getClick();
+        String click = ChapterImageClickData.get(image);
         if (!click.startsWith(PREFIX)) {
             return Optional.empty();
         }
@@ -28,12 +28,12 @@ public final class ChapterCanvasVideo {
         String click = QuestVideoData.normalize(video_path)
                 .map(path -> PREFIX + path)
                 .orElse("");
-        ((ChapterImageAccessor) (Object) image).quest_enhance$set_click(click);
+        ChapterImageClickData.set(image, click);
     }
 
     // 创建一个可缩放的十六比九章节视频背景对象
     public static ChapterImage create(Chapter chapter, String video_path, double x, double y) {
-        ChapterImage image = new ChapterImage(chapter)
+        ChapterImage image = new ChapterImage(0L, chapter)
                 .setPosition(x, y)
                 .setImage(Color4I.DARK_GRAY);
         ChapterImageAccessor accessor = (ChapterImageAccessor) (Object) image;

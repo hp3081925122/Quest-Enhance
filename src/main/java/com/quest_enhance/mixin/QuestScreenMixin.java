@@ -3,7 +3,6 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.ChapterClipboardImage;
 import com.quest_enhance.client.QuestEnhanceClipboardEntry;
-import com.quest_enhance.client.QuestScreenEditHistory;
 import com.mojang.datafixers.util.Pair;
 import dev.architectury.networking.NetworkManager;
 import dev.ftb.mods.ftblibrary.icon.Icons;
@@ -15,14 +14,13 @@ import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.CopyChapterImageMessage;
 import dev.ftb.mods.ftbquests.net.CopyQuestMessage;
-import dev.ftb.mods.ftbquests.net.EditObjectMessage;
+import dev.ftb.mods.ftbquests.net.CreateObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
@@ -30,13 +28,10 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Mixin(value = QuestScreen.class, remap = false)
 public abstract class QuestScreenMixin {
@@ -45,12 +40,6 @@ public abstract class QuestScreenMixin {
 
     @Unique
     private static List<QuestEnhanceClipboardEntry> quest_enhance$multi_clipboard = List.of();
-
-    @Unique
-    private static final int QUEST_ENHANCE_HISTORY_LIMIT = 64;
-
-    @Unique
-    private static final Map<Long, QuestScreenEditHistory> quest_enhance$edit_history = new HashMap<>();
 
     @Shadow
     @Final
@@ -135,6 +124,7 @@ public abstract class QuestScreenMixin {
     @Inject(method = "pasteSelectedQuest", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$paste_multiple_objects(
             boolean copy_dependencies,
+            Chapter target_chapter,
             CallbackInfoReturnable<Boolean> callback_info
     ) {
         if (quest_enhance$multi_clipboard.size() <= 1
@@ -142,19 +132,18 @@ public abstract class QuestScreenMixin {
             return;
         }
 
-        QuestScreenAccessor accessor = (QuestScreenAccessor) this;
-        Chapter chapter = accessor.quest_enhance$get_selected_chapter();
-        if (chapter == null) {
+        if (target_chapter == null) {
             callback_info.setReturnValue(false);
             return;
         }
 
         // 为每个条目发送 FTB 原生复制消息，由服务端继续负责完整任务和图片数据复制
+        QuestScreenAccessor accessor = (QuestScreenAccessor) this;
         Pair<Double, Double> target = accessor.quest_enhance$invoke_get_snapped_xy();
         QuestEnhance.LOGGER.debug(
                 "Pasting multi-selection: count={}, chapter={}, targetX={}, targetY={}, copyDependencies={}",
                 quest_enhance$multi_clipboard.size(),
-                chapter.getId(),
+                target_chapter.getId(),
                 target.getFirst(),
                 target.getSecond(),
                 copy_dependencies
@@ -165,28 +154,16 @@ public abstract class QuestScreenMixin {
             if (entry.object() instanceof Quest quest) {
                 NetworkManager.sendToServer(new CopyQuestMessage(
                         quest.getId(),
-                        chapter.getId(),
+                        target_chapter.getId(),
                         x,
                         y,
                         copy_dependencies
                 ));
             } else if (entry.object() instanceof ChapterImage image) {
-                NetworkManager.sendToServer(new CopyChapterImageMessage(image, chapter, x, y));
+                NetworkManager.sendToServer(new CopyChapterImageMessage(image.getId(), target_chapter.getId(), x, y));
             }
         }
         callback_info.setReturnValue(true);
-    }
-
-    // 在每个客户端刻记录当前章节状态，为画布编辑建立撤销历史
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void quest_enhance$track_edit_history(CallbackInfo callback_info) {
-        QuestScreenAccessor accessor = (QuestScreenAccessor) this;
-        Chapter chapter = accessor.quest_enhance$get_selected_chapter();
-        if (chapter == null || !accessor.quest_enhance$get_file().canEdit()) {
-            return;
-        }
-
-        this.quest_enhance$track_current_edit(chapter, accessor);
     }
 
     // 在画布内优先粘贴剪贴板图片，并保留原生文字和任务粘贴行为
@@ -217,114 +194,9 @@ public abstract class QuestScreenMixin {
             return;
         }
 
-        chapter.addImage(image);
-        EditObjectMessage.sendToServer(chapter);
+        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
         ((QuestScreen) (Object) this).refreshQuestPanel();
         callback_info.setReturnValue(true);
-    }
-
-    // 在任务书画布内处理 Ctrl+Z 和 Ctrl+Y，不拦截没有历史记录的原生快捷键
-    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void quest_enhance$handle_edit_history_key(
-            Key key,
-            CallbackInfoReturnable<Boolean> callback_info
-    ) {
-        if (!key.modifiers.onlyControl() || (!key.is(90) && !key.is(89))) {
-            return;
-        }
-
-        QuestScreenAccessor accessor = (QuestScreenAccessor) this;
-        Chapter chapter = accessor.quest_enhance$get_selected_chapter();
-        if (chapter == null || !accessor.quest_enhance$get_file().canEdit()) {
-            return;
-        }
-
-        this.quest_enhance$track_current_edit(chapter, accessor);
-        QuestScreenEditHistory history = this.quest_enhance$edit_history.get(chapter.getId());
-        if (history == null) {
-            return;
-        }
-
-        if (key.is(90) && !history.undo.isEmpty()) {
-            history.redo.addLast(history.current);
-            QuestScreenEditHistory.Snapshot snapshot = history.undo.removeLast();
-            this.quest_enhance$restore_snapshot(chapter, snapshot, accessor);
-            history.current = quest_enhance$create_snapshot(chapter, accessor);
-            history.ignore_next_snapshot = true;
-            callback_info.setReturnValue(true);
-        } else if (key.is(89) && !history.redo.isEmpty()) {
-            history.undo.addLast(history.current);
-            QuestScreenEditHistory.Snapshot snapshot = history.redo.removeLast();
-            this.quest_enhance$restore_snapshot(chapter, snapshot, accessor);
-            history.current = quest_enhance$create_snapshot(chapter, accessor);
-            history.ignore_next_snapshot = true;
-            callback_info.setReturnValue(true);
-        }
-    }
-
-    // 按快捷键触发时补录尚未来得及进入下一刻的编辑变化
-    @Unique
-    private void quest_enhance$track_current_edit(Chapter chapter, QuestScreenAccessor accessor) {
-        QuestScreenEditHistory.Snapshot snapshot = quest_enhance$create_snapshot(chapter, accessor);
-        QuestScreenEditHistory history = this.quest_enhance$edit_history.computeIfAbsent(
-                chapter.getId(),
-                ignored -> new QuestScreenEditHistory()
-        );
-        if (history.current == null) {
-            history.current = snapshot;
-        } else if (history.ignore_next_snapshot) {
-            history.current = snapshot;
-            history.ignore_next_snapshot = false;
-        } else if (!history.current.equals(snapshot)) {
-            if (!history.current.quests().keySet().equals(snapshot.quests().keySet())) {
-                history.undo.clear();
-                history.redo.clear();
-            } else {
-                history.undo.addLast(history.current);
-                while (history.undo.size() > QUEST_ENHANCE_HISTORY_LIMIT) {
-                    history.undo.removeFirst();
-                }
-                history.redo.clear();
-            }
-            history.current = snapshot;
-        }
-    }
-
-    // 保存章节图片、装饰线和现有任务节点的完整原生编辑数据
-    @Unique
-    private static QuestScreenEditHistory.Snapshot quest_enhance$create_snapshot(
-            Chapter chapter,
-            QuestScreenAccessor accessor
-    ) {
-        CompoundTag chapter_data = new CompoundTag();
-        chapter.writeData(chapter_data, accessor.quest_enhance$get_file().holderLookup());
-        Map<Long, CompoundTag> quest_data = new HashMap<>();
-        for (Quest quest : chapter.getQuests()) {
-            CompoundTag tag = new CompoundTag();
-            quest.writeData(tag, accessor.quest_enhance$get_file().holderLookup());
-            quest_data.put(quest.getId(), tag);
-        }
-        return new QuestScreenEditHistory.Snapshot(chapter_data, Map.copyOf(quest_data));
-    }
-
-    // 恢复当前章节后逐项同步任务节点与章节图片到服务端
-    @Unique
-    private void quest_enhance$restore_snapshot(
-            Chapter chapter,
-            QuestScreenEditHistory.Snapshot snapshot,
-            QuestScreenAccessor accessor
-    ) {
-        accessor.quest_enhance$get_selected_objects().clear();
-        chapter.readData(snapshot.chapter().copy(), accessor.quest_enhance$get_file().holderLookup());
-        for (Map.Entry<Long, CompoundTag> entry : snapshot.quests().entrySet()) {
-            Quest quest = accessor.quest_enhance$get_file().getQuest(entry.getKey());
-            if (quest != null) {
-                quest.readData(entry.getValue().copy(), accessor.quest_enhance$get_file().holderLookup());
-                EditObjectMessage.sendToServer(quest);
-            }
-        }
-        EditObjectMessage.sendToServer(chapter);
-        ((QuestScreen) (Object) this).refreshQuestPanel();
     }
 
 }

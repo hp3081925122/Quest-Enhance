@@ -9,7 +9,6 @@ import com.quest_enhance.client.VideoConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
 import dev.ftb.mods.ftblibrary.config.NameMap;
-import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.Chapter;
@@ -19,7 +18,6 @@ import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -57,10 +55,6 @@ public abstract class ChapterImageMixin {
 
     @Shadow
     private int alpha;
-
-    @Shadow
-    @Final
-    private List<String> hover;
 
     @Shadow
     private boolean editorsOnly;
@@ -169,7 +163,6 @@ public abstract class ChapterImageMixin {
                         : gif_data.isPresent()
                         ? "quest_enhance.gif.alpha"
                         : "quest_enhance.chapter_video.alpha");
-        config.addList("hover", this.hover, new StringConfig(), "");
         config.addBool("dev", this.editorsOnly, value -> this.editorsOnly = value, false);
         config.addBool("corner", this.alignToCorner, value -> this.alignToCorner = value, false);
 
@@ -198,7 +191,7 @@ public abstract class ChapterImageMixin {
     }
 
     // 在删除确认等原生界面中使用实际文字作为对象标题
-    @Inject(method = "getTitle", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getAltTitle", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$get_text_title(CallbackInfoReturnable<Component> callback_info) {
         ChapterCanvasText.getTextData((ChapterImage) (Object) this)
                 .ifPresent(data -> callback_info.setReturnValue(data.component()));
@@ -211,16 +204,4 @@ public abstract class ChapterImageMixin {
         }
     }
 
-    // 复制辅助点时重建 UUID，避免新旧辅助点映射到同一个路径节点
-    @Inject(method = "copy", at = @At("RETURN"))
-    private void quest_enhance$renew_copied_anchor_id(
-            Chapter target_chapter,
-            double target_x,
-            double target_y,
-            CallbackInfoReturnable<ChapterImage> callback_info
-    ) {
-        if (DecorativeAnchor.isAnchor((ChapterImage) (Object) this)) {
-            DecorativeAnchor.assignNewId(callback_info.getReturnValue());
-        }
-    }
 }

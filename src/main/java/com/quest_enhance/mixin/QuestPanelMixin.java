@@ -16,6 +16,7 @@ import com.quest_enhance.client.GifSelectionScreen;
 import com.quest_enhance.client.TaskTypeSelectionScreen;
 import com.quest_enhance.client.VideoSelectionScreen;
 import com.quest_enhance.client.VideoSupport;
+import dev.architectury.networking.NetworkManager;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icon;
@@ -25,9 +26,11 @@ import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.Widget;
+import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
+import dev.ftb.mods.ftbquests.net.CreateObjectMessage;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
@@ -48,6 +51,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -72,6 +76,56 @@ public abstract class QuestPanelMixin {
 
     @Shadow
     protected double questY;
+
+    // 记录原生移动模式提交自定义节点的位置与目标坐标
+    @Inject(method = "mousePressed", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$log_special_canvas_move_target(
+            MouseButton button,
+            CallbackInfoReturnable<Boolean> callback_info
+    ) {
+        QuestScreenAccessor accessor = (QuestScreenAccessor) (Object) this.questScreen;
+        if (!accessor.quest_enhance$is_moving_objects()) {
+            return;
+        }
+
+        List<ChapterImage> images = accessor.quest_enhance$get_selected_objects().stream()
+                .filter(ChapterImage.class::isInstance)
+                .map(ChapterImage.class::cast)
+                .filter(QuestPanelMixin::quest_enhance$is_special_canvas_image)
+                .toList();
+        if (button.isRight() || images.isEmpty()
+                || images.size() != accessor.quest_enhance$get_selected_objects().size()) {
+            return;
+        }
+
+        Chapter chapter = images.getFirst().getChapter();
+        double min_x = images.stream().mapToDouble(ChapterImage::getX).min().orElse(this.questX);
+        double min_y = images.stream().mapToDouble(ChapterImage::getY).min().orElse(this.questY);
+        for (ChapterImage image : images) {
+            image.setPosition(
+                    this.questX + image.getX() - min_x,
+                    this.questY + image.getY() - min_y
+            );
+        }
+
+        // 自定义章节图片逐项同步，确保 FTB 原生编辑历史记录实际对象
+        for (ChapterImage image : images) {
+            EditObjectMessage.sendToServer(image);
+        }
+        accessor.quest_enhance$set_moving_objects(false);
+        accessor.quest_enhance$get_selected_objects().clear();
+        this.questScreen.refreshQuestPanel();
+        callback_info.setReturnValue(true);
+    }
+
+    // 判断章节图片是否为任务书增强的自定义画布节点
+    @Unique
+    private static boolean quest_enhance$is_special_canvas_image(ChapterImage image) {
+        return DecorativeAnchor.isAnchor(image)
+                || ChapterCanvasText.getTextData(image).isPresent()
+                || ChapterCanvasVideo.getVideoData(image).isPresent()
+                || ChapterCanvasGif.getGifData(image).isPresent();
+    }
 
     // 在章节节点画布的空白处右键菜单中加入辅助点、文字和视频入口
     @ModifyArg(
@@ -117,8 +171,7 @@ public abstract class QuestPanelMixin {
                             this.questScreen.getQuestButtonSize()
                     );
                     if (image != null) {
-                        chapter.addImage(image);
-                        EditObjectMessage.sendToServer(chapter);
+                        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
                         this.questScreen.refreshQuestPanel();
                     }
             }
@@ -130,8 +183,7 @@ public abstract class QuestPanelMixin {
                 Icons.CAMERA,
                 button -> GifSelectionScreen.open(button.getParent(), null, resource_location -> {
                     ChapterImage image = ChapterCanvasGif.create(chapter, resource_location, x, y);
-                    chapter.addImage(image);
-                    EditObjectMessage.sendToServer(chapter);
+                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
                     this.questScreen.refreshQuestPanel();
                 })
         ));
@@ -142,8 +194,7 @@ public abstract class QuestPanelMixin {
                 Icons.MARKER,
                 button -> {
                     ChapterImage anchor = DecorativeAnchor.create(chapter, x, y);
-                    chapter.addImage(anchor);
-                    EditObjectMessage.sendToServer(chapter);
+                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(anchor));
                     this.questScreen.refreshQuestPanel();
                 }
         ));
@@ -168,8 +219,7 @@ public abstract class QuestPanelMixin {
                                             this.questScreen.getQuestButtonSize(),
                                             this.questScreen.getTheme()
                                     );
-                                    chapter.addImage(image);
-                                    EditObjectMessage.sendToServer(chapter);
+                                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
                                 }
                                 this.questScreen.openGui();
                             },
@@ -189,8 +239,7 @@ public abstract class QuestPanelMixin {
                     Icons.CAMERA,
                     button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
                         ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
-                        chapter.addImage(image);
-                        EditObjectMessage.sendToServer(chapter);
+                        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
                         this.questScreen.refreshQuestPanel();
                     })
             ));

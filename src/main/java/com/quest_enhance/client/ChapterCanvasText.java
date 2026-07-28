@@ -25,7 +25,7 @@ public final class ChapterCanvasText {
 
     // 判断章节图片是否是本模组保存的画布文字，并读取文字与字体
     public static Optional<TextData> getTextData(ChapterImage image) {
-        String click = image.getClick();
+        String click = ChapterImageClickData.get(image);
         if (click.startsWith(PREFIX)) {
             String value = click.substring(PREFIX.length());
             int separator = value.indexOf(':');
@@ -87,7 +87,8 @@ public final class ChapterCanvasText {
     // 用长度前缀保存字体标识，保证文字本身可以包含任意分隔符
     private static void setTextData(ChapterImage image, TextData data) {
         String font = data.font().toString();
-        ((ChapterImageAccessor) (Object) image).quest_enhance$set_click(
+        ChapterImageClickData.set(
+                image,
                 PREFIX + font.length() + ":" + font + data.text()
         );
     }
@@ -101,7 +102,7 @@ public final class ChapterCanvasText {
             double quest_button_size,
             Theme theme
     ) {
-        ChapterImage image = new ChapterImage(chapter).setPosition(x, y);
+        ChapterImage image = new ChapterImage(0L, chapter).setPosition(x, y);
         ChapterImageAccessor accessor = (ChapterImageAccessor) (Object) image;
         double safe_button_size = Math.max(1.0, quest_button_size);
         TextData data = new TextData(text, DEFAULT_FONT);

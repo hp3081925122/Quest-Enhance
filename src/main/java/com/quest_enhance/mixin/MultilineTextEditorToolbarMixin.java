@@ -2,6 +2,7 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.DescriptionComponentMenu;
 import com.quest_enhance.client.MultilineTextEditorAccess;
+import com.quest_enhance.QuestEnhance;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.SimpleTextButton;
@@ -26,11 +27,11 @@ public abstract class MultilineTextEditorToolbarMixin {
     // 保存工具栏所属编辑器，避免访问编译器生成的外部类字段
     @Inject(method = "<init>", at = @At("TAIL"))
     private void quest_enhance$capture_editor(
-            MultilineTextEditorScreen editor,
+            MultilineTextEditorScreen outerPanel,
             Panel parent,
             CallbackInfo callback_info
     ) {
-        this.quest_enhance$editor = editor;
+        this.quest_enhance$editor = outerPanel;
     }
 
     // 在描述编辑器工具栏中加入统一组件按钮
@@ -48,18 +49,19 @@ public abstract class MultilineTextEditorToolbarMixin {
                 Component.translatable("quest_enhance.description_component.add")
         );
         panel.add(this.quest_enhance$component_button);
+        QuestEnhance.LOGGER.debug("Added description component toolbar button");
     }
 
     // 将组件按钮放在原生图片和格式转换按钮之后
     @Inject(method = "alignWidgets", at = @At("TAIL"))
     private void quest_enhance$align_component_button(CallbackInfo callback_info) {
         if (this.quest_enhance$component_button != null) {
-            this.quest_enhance$component_button.setPosAndSize(197, 1, 16, 16);
+            this.quest_enhance$component_button.setPosAndSize(213, 1, 16, 16);
         }
     }
 
     // 为新增组件按钮向右移动原生撤销按钮
-    @ModifyConstant(method = "alignWidgets", constant = @Constant(intValue = 207))
+    @ModifyConstant(method = "alignWidgets", constant = @Constant(intValue = 223))
     private int quest_enhance$move_undo_button(int original_x) {
         return original_x + 16;
     }

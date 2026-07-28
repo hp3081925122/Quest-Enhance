@@ -69,7 +69,7 @@ public final class ChapterClipboardImage {
             double width = buffered_image.getWidth() / safe_button_size;
             double height = buffered_image.getHeight() / safe_button_size;
             double scale = Math.min(1.0D, MAXIMUM_SIZE / Math.max(width, height));
-            ChapterImage image = new ChapterImage(chapter)
+            ChapterImage image = new ChapterImage(0L, chapter)
                     .setPosition(x, y)
                     .setImage(Icon.getIcon(resource_location));
             ChapterImageAccessor accessor = (ChapterImageAccessor) (Object) image;
