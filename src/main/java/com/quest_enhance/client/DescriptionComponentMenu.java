@@ -8,6 +8,7 @@ import dev.ftb.mods.ftblibrary.config.ItemStackConfig;
 import dev.ftb.mods.ftblibrary.config.NameMap;
 import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
 import dev.ftb.mods.ftblibrary.config.ui.resource.SelectItemStackScreen;
+import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
@@ -21,7 +22,6 @@ import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.QuestObjectType;
 import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -563,7 +563,8 @@ public final class DescriptionComponentMenu {
             MultilineTextEditorAccess editor,
             ItemStack selected_stack
     ) {
-        String item_icon = "item:" + BuiltInRegistries.ITEM.getKey(selected_stack.getItem());
+        // 图标保留完整 Data Components、耐久和数量
+        String item_icon = ItemIcon.getItemIcon(selected_stack.copy()).toString();
         openItemIconConfig(
                 parent,
                 item_icon,
@@ -612,7 +613,7 @@ public final class DescriptionComponentMenu {
         boolean[] fit = {initial_fit};
         String[] hover_text = {initial_hover_text};
 
-        // 物品图标只保存注册名，避免完整 Data Components 写入任务描述
+        // 物品图标沿用 FTB 原生序列化格式保存完整 Data Components
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 save.accept(imageMarkup(
