@@ -1,8 +1,8 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
-import com.quest_enhance.client.ChapterClipboardImage;
-import com.quest_enhance.client.QuestEnhanceClipboardEntry;
+import com.quest_enhance.client.clipboard.ChapterClipboardImage;
+import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.mojang.datafixers.util.Pair;
 import dev.architectury.networking.NetworkManager;
 import dev.ftb.mods.ftblibrary.icon.Icons;

@@ -1,9 +1,9 @@
 package com.quest_enhance;
 
-import com.quest_enhance.client.QuestEnhanceClientConfig;
-import com.quest_enhance.client.QuestDescriptionTable;
-import com.quest_enhance.client.QuestDescriptionGif;
-import com.quest_enhance.client.QuestDescriptionVideo;
+import com.quest_enhance.client.config.QuestEnhanceClientConfig;
+import com.quest_enhance.client.description.QuestDescriptionGif;
+import com.quest_enhance.client.description.QuestDescriptionTable;
+import com.quest_enhance.client.description.QuestDescriptionVideo;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;

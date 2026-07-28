@@ -1,9 +1,9 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.QuestEntityModel;
-import com.quest_enhance.client.QuestVideoData;
-import com.quest_enhance.client.VideoConfig;
-import com.quest_enhance.client.VideoSupport;
+import com.quest_enhance.client.media.VideoConfig;
+import com.quest_enhance.client.media.VideoSupport;
+import com.quest_enhance.client.quest.QuestEntityModel;
+import com.quest_enhance.client.quest.QuestVideoData;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftblibrary.config.NameMap;

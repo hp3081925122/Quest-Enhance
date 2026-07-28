@@ -1,7 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.mixin.ChapterImageAccessor;
-import com.quest_enhance.client.ChapterImageClickData;
+import com.quest_enhance.client.canvas.ChapterImageClickData;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 

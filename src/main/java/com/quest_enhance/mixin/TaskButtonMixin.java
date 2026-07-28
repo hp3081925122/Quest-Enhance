@@ -1,7 +1,7 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.QuestEnhanceClientConfig;
-import com.quest_enhance.client.KillTaskEntityPreview;
+import com.quest_enhance.client.config.QuestEnhanceClientConfig;
+import com.quest_enhance.client.quest.KillTaskEntityPreview;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftbquests.client.gui.quests.TaskButton;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;

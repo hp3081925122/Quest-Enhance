@@ -1,9 +1,9 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
-import com.quest_enhance.client.QuestDescriptionTable;
-import com.quest_enhance.client.QuestDescriptionVideo;
-import com.quest_enhance.client.VideoSupport;
+import com.quest_enhance.client.description.QuestDescriptionTable;
+import com.quest_enhance.client.description.QuestDescriptionVideo;
+import com.quest_enhance.client.media.VideoSupport;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.ClickEvent;

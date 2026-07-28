@@ -1,7 +1,7 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.client.DescriptionComponentMenu;
-import com.quest_enhance.client.MultilineTextEditorAccess;
+import com.quest_enhance.client.description.DescriptionComponentMenu;
+import com.quest_enhance.client.description.MultilineTextEditorAccess;
 import com.quest_enhance.QuestEnhance;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.Panel;
