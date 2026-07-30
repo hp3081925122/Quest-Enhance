@@ -2,6 +2,7 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.DecorativeDependencyLines;
+import com.quest_enhance.HiddenDependencyLines;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -24,6 +25,7 @@ public abstract class ChapterMixin {
             CallbackInfo callback_info
     ) {
         DecorativeDependencyLines.writeData((Chapter) (Object) this, tag);
+        HiddenDependencyLines.writeData((Chapter) (Object) this, tag);
     }
 
     // 从章节存档恢复装饰线
@@ -34,6 +36,7 @@ public abstract class ChapterMixin {
             CallbackInfo callback_info
     ) {
         DecorativeDependencyLines.readData((Chapter) (Object) this, tag);
+        HiddenDependencyLines.readData((Chapter) (Object) this, tag);
     }
 
     // 将装饰线追加到 FTB Quests 的编辑同步数据
@@ -43,6 +46,7 @@ public abstract class ChapterMixin {
             CallbackInfo callback_info
     ) {
         DecorativeDependencyLines.writeNetData((Chapter) (Object) this, buffer);
+        HiddenDependencyLines.writeNetData((Chapter) (Object) this, buffer);
     }
 
     // 从 FTB Quests 的编辑同步数据恢复装饰线
@@ -52,6 +56,7 @@ public abstract class ChapterMixin {
             CallbackInfo callback_info
     ) {
         DecorativeDependencyLines.readNetData((Chapter) (Object) this, buffer);
+        HiddenDependencyLines.readNetData((Chapter) (Object) this, buffer);
     }
 
     // 删除任务时同步清理装饰线路径中的任务节点
@@ -64,6 +69,7 @@ public abstract class ChapterMixin {
                 (Chapter) (Object) this,
                 DecorativeDependencyLines.questNode(quest.getMovableID())
         );
+        HiddenDependencyLines.removeQuest((Chapter) (Object) this, quest.getMovableID());
     }
 
     // 删除链接任务时同步清理装饰线路径中的链接节点

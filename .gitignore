@@ -22,3 +22,4 @@ run
 runclient-*.log
 .eclipse/
 bin/
+.vscode/
