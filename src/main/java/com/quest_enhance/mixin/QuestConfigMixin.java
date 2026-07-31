@@ -4,17 +4,16 @@ import com.quest_enhance.client.media.VideoConfig;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ConfigValue;
-import dev.ftb.mods.ftblibrary.config.NameMap;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableConfigValue;
+import dev.ftb.mods.ftblibrary.util.NameMap;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SpawnEggItem;
@@ -29,17 +28,17 @@ import java.util.List;
 @Mixin(value = Quest.class, remap = false)
 public abstract class QuestConfigMixin {
     // 在原生图标配置下方增加可持久化的实体模型选择项
-    @Inject(method = "fillConfigGroup", at = @At("TAIL"))
-    private void quest_enhance$add_entity_model_config(ConfigGroup config, CallbackInfo callback_info) {
+    @Inject(method = "fillEditableConfigGroup", at = @At("TAIL"))
+    private void quest_enhance$add_entity_model_config(EditableConfigGroup config, CallbackInfo callback_info) {
         Quest quest = (Quest) (Object) this;
         ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
-        ResourceLocation initial_model = QuestEntityModel.getEntityModel(raw_icon).orElse(QuestEntityModel.NONE);
+        Identifier initial_model = QuestEntityModel.getEntityModel(raw_icon).orElse(QuestEntityModel.NONE);
 
         // 构建“无”和全部实体注册名组成的原生枚举选择器
-        List<ResourceLocation> entity_ids = new ArrayList<>();
+        List<Identifier> entity_ids = new ArrayList<>();
         entity_ids.add(QuestEntityModel.NONE);
         entity_ids.addAll(BuiltInRegistries.ENTITY_TYPE.keySet());
-        NameMap<ResourceLocation> entity_models = NameMap.of(QuestEntityModel.NONE, entity_ids)
+        NameMap<Identifier> entity_models = NameMap.of(QuestEntityModel.NONE, entity_ids)
                 .name(entity_id -> entity_id.equals(QuestEntityModel.NONE)
                         ? Component.translatable("quest_enhance.none")
                         : Component.translatable("entity." + entity_id.getNamespace() + "." + entity_id.getPath()))
@@ -49,8 +48,9 @@ public abstract class QuestConfigMixin {
                     }
 
                     EntityType<?> entity_type = BuiltInRegistries.ENTITY_TYPE.getOptional(entity_id).orElse(null);
-                    SpawnEggItem spawn_egg = entity_type == null ? null : SpawnEggItem.byId(entity_type);
-                    return ItemIcon.getItemIcon((Item) (spawn_egg == null ? Items.BARRIER : spawn_egg));
+                    return ItemIcon.ofItem(entity_type == null
+                            ? Items.BARRIER
+                            : SpawnEggItem.byId(entity_type).map(holder -> holder.value()).orElse(Items.BARRIER));
                 })
                 .create();
 
@@ -96,7 +96,7 @@ public abstract class QuestConfigMixin {
         }
 
         // 给模型项腾出图标下方的位置，并保持标签和后续字段的原有相对顺序
-        for (ConfigValue<?> value : config.getValues()) {
+        for (EditableConfigValue<?> value : config.getValues()) {
             if ("tags".equals(value.id)) {
                 value.setOrder(-123);
                 break;

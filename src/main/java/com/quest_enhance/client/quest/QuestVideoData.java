@@ -5,7 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -38,18 +38,14 @@ public final class QuestVideoData {
     // 从任务原生图标的自定义数据中读取视频相对路径
     public static Optional<String> getVideo(ItemStack icon_stack) {
         CompoundTag tag = icon_stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        if (!tag.contains(VIDEO_TAG, Tag.TAG_STRING)) {
-            return Optional.empty();
-        }
-
-        return normalize(tag.getString(VIDEO_TAG));
+        return normalize(tag.getStringOr(VIDEO_TAG, ""));
     }
 
     // 判断当前物品是否只是为了让 FTB 保存视频数据而创建的隐藏占位图标
     public static boolean isPlaceholder(ItemStack icon_stack) {
         return icon_stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
                 .copyTag()
-                .getBoolean(PLACEHOLDER_TAG);
+                .getBooleanOr(PLACEHOLDER_TAG, false);
     }
 
     // 在不覆盖普通图标和实体模型数据的前提下更新视频路径
@@ -61,7 +57,7 @@ public final class QuestVideoData {
             }
 
             CompoundTag current_tag = original_stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-            boolean placeholder = current_tag.getBoolean(PLACEHOLDER_TAG);
+            boolean placeholder = current_tag.getBooleanOr(PLACEHOLDER_TAG, false);
             ItemStack updated_stack = original_stack.copy();
             CustomData.update(DataComponents.CUSTOM_DATA, updated_stack, tag -> {
                 tag.remove(VIDEO_TAG);
@@ -196,7 +192,7 @@ public final class QuestVideoData {
                         && isVideoFile(location.getPath()))
                 .keySet()
                 .stream()
-                .map(ResourceLocation::getPath)
+                .map(Identifier::getPath)
                 .map(path -> BUNDLED_VIDEO_PREFIX + path.substring(BUNDLED_VIDEO_DIRECTORY.length() + 1))
                 .toList();
         videos.addAll(bundled_videos);
@@ -233,7 +229,7 @@ public final class QuestVideoData {
     // 从当前资源包读取模组内视频，并缓存为 VLC 可访问的真实文件
     private static Optional<Path> resolveBundledVideo(String video_path) {
         String relative_path = video_path.substring(BUNDLED_VIDEO_PREFIX.length());
-        ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
+        Identifier resource_location = Identifier.fromNamespaceAndPath(
                 QuestEnhance.MOD_ID,
                 BUNDLED_VIDEO_DIRECTORY + "/" + relative_path
         );

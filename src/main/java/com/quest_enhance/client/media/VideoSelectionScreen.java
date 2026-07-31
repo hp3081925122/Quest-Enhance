@@ -2,9 +2,9 @@ package com.quest_enhance.client.media;
 
 import com.quest_enhance.client.quest.QuestVideoData;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.SimpleTextButton;
-import dev.ftb.mods.ftblibrary.ui.misc.AbstractButtonListScreen;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.widget.SimpleTextButton;
+import dev.ftb.mods.ftblibrary.client.gui.screens.AbstractButtonListScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 

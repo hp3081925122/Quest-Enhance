@@ -2,12 +2,12 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
-import dev.ftb.mods.ftblibrary.ui.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import dev.ftb.mods.ftbquests.client.gui.quests.TaskButton;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import dev.ftb.mods.ftbquests.quest.task.Task;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -26,7 +26,7 @@ public abstract class TaskButtonMixin {
     // 在开关启用时用缓存的生物模型替代击杀任务刷怪蛋图标
     @Inject(method = "drawIcon", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$draw_kill_task_entity(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -43,7 +43,7 @@ public abstract class TaskButtonMixin {
         if (this.quest_enhance$entity_preview == null) {
             this.quest_enhance$entity_preview = new KillTaskEntityPreview();
         }
-        ResourceLocation entity_id = ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
+        Identifier entity_id = ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
         if (this.quest_enhance$entity_preview.render(entity_id, graphics, x, y, width, height)) {
             callback_info.cancel();
         }

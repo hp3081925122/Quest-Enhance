@@ -4,8 +4,8 @@ import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.description.QuestDescriptionTable;
 import com.quest_enhance.client.description.QuestDescriptionVideo;
 import com.quest_enhance.client.media.VideoSupport;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import net.minecraft.client.gui.GuiGraphics;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -20,7 +20,7 @@ public abstract class QuestDescriptionFieldMixin {
     // 表格描述行使用自定义网格渲染替代普通文字绘制
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$draw_table(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -46,18 +46,17 @@ public abstract class QuestDescriptionFieldMixin {
         }
 
         ClickEvent click_event = style.getClickEvent();
-        String click_value = click_event.getValue();
-        if (click_event.getAction() == ClickEvent.Action.CHANGE_PAGE
-                && click_value.startsWith(QuestDescriptionTable.CLICK_PREFIX)) {
+        if (click_event instanceof ClickEvent.Custom custom
+                && custom.id().equals(QuestDescriptionTable.CLICK_ACTION)) {
             callback_info.setReturnValue(true);
             return;
         }
-        if (click_event.getAction() != ClickEvent.Action.CHANGE_PAGE
-                || !click_value.startsWith(QuestDescriptionVideo.CLICK_PREFIX)) {
+        if (!(click_event instanceof ClickEvent.Custom custom)
+                || !custom.id().equals(QuestDescriptionVideo.CLICK_ACTION)) {
             return;
         }
 
-        String encoded_path = click_value.substring(QuestDescriptionVideo.CLICK_PREFIX.length());
+        String encoded_path = custom.payload().flatMap(tag -> tag.asString()).orElse("");
         QuestDescriptionVideo.decodePath(encoded_path).ifPresentOrElse(
                 VideoSupport::open,
                 () -> QuestEnhance.LOGGER.error(

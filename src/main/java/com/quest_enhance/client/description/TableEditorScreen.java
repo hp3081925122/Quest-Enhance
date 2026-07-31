@@ -1,18 +1,18 @@
 package com.quest_enhance.client.description;
 
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.gui.EditConfigScreen;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.BaseScreen;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.SimpleTextButton;
-import dev.ftb.mods.ftblibrary.ui.TextBox;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import dev.ftb.mods.ftblibrary.ui.Widget;
-import dev.ftb.mods.ftblibrary.ui.input.Key;
-import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
-import net.minecraft.client.gui.GuiGraphics;
+import dev.ftb.mods.ftblibrary.client.gui.widget.BaseScreen;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.widget.SimpleTextButton;
+import dev.ftb.mods.ftblibrary.client.gui.widget.TextBox;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
+import dev.ftb.mods.ftblibrary.client.gui.input.Key;
+import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
@@ -285,7 +285,7 @@ public final class TableEditorScreen extends BaseScreen {
 
     @Override
     public void drawBackground(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -480,7 +480,7 @@ public final class TableEditorScreen extends BaseScreen {
         Color4I[] next_text_color = {this.text_color};
 
         // 确认样式设置后再应用，取消不会改变当前表格
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 QuestDescriptionTable.TableData previous = this.tableData();
                 this.header = next_header[0];

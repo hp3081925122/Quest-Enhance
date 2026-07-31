@@ -2,11 +2,11 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.description.DescriptionComponentMenu;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
-import dev.ftb.mods.ftblibrary.ui.BlankPanel;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.Widget;
-import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
-import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
+import dev.ftb.mods.ftblibrary.client.gui.widget.BlankPanel;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
+import dev.ftb.mods.ftblibrary.client.util.ClientTextComponentUtils;
+import dev.ftb.mods.ftblibrary.client.util.ImageComponent;
 import dev.ftb.mods.ftbquests.client.gui.quests.ViewQuestPanel;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.translation.TranslationKey;
@@ -87,9 +87,9 @@ public abstract class ViewQuestPanelMixin {
             // 从 FTB 已解析组件中恢复可选悬停文字
             Component parsed = ClientTextComponentUtils.parse(raw_text);
             HoverEvent hover_event = parsed.getStyle().getHoverEvent();
-            Component hover_component = hover_event == null
-                    ? null
-                    : hover_event.getValue(HoverEvent.Action.SHOW_TEXT);
+            Component hover_component = hover_event instanceof HoverEvent.ShowText show_text
+                    ? show_text.value()
+                    : null;
             String hover_text = hover_component == null ? "" : hover_component.getString();
             if (item_icon) {
                 DescriptionComponentMenu.editItemIcon(panel, image_component, hover_text, save);

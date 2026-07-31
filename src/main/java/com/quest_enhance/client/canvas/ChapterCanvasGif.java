@@ -9,7 +9,7 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import org.w3c.dom.Node;
 
@@ -36,7 +36,7 @@ public final class ChapterCanvasGif {
     private static final int MAXIMUM_FRAME_COUNT = 64;
     private static final int MAXIMUM_FRAME_SIZE = 1024;
     private static final long MAXIMUM_TOTAL_PIXELS = 16L * 1024L * 1024L;
-    private static final Map<ResourceLocation, Optional<Animation>> ANIMATIONS = new HashMap<>();
+    private static final Map<Identifier, Optional<Animation>> ANIMATIONS = new HashMap<>();
 
     private ChapterCanvasGif() {
     }
@@ -48,16 +48,16 @@ public final class ChapterCanvasGif {
             return Optional.empty();
         }
 
-        return ResourceLocation.read(click.substring(PREFIX.length())).result().map(GifData::new);
+        return Identifier.read(click.substring(PREFIX.length())).result().map(GifData::new);
     }
 
     // 修改 GIF 时继续复用 FTB 原生点击字段保存资源标识
-    public static void setGif(ChapterImage image, ResourceLocation resource_location) {
+    public static void setGif(ChapterImage image, Identifier resource_location) {
         ChapterImageClickData.set(image, PREFIX + resource_location);
     }
 
     // 创建按 GIF 原始比例缩放的章节画布对象
-    public static ChapterImage create(Chapter chapter, ResourceLocation resource_location, double x, double y) {
+    public static ChapterImage create(Chapter chapter, Identifier resource_location, double x, double y) {
         double aspect_ratio = getAspectRatio(resource_location).orElse(1.0D);
         double width = 4.0D;
         ChapterImage image = new ChapterImage(0L, chapter)
@@ -71,7 +71,7 @@ public final class ChapterCanvasGif {
     }
 
     // 获取当前动画帧的动态纹理图标，解码失败时返回空值交由调用方绘制占位背景
-    public static Optional<Icon> getCurrentFrame(ResourceLocation resource_location) {
+    public static Optional<Icon> getCurrentFrame(Identifier resource_location) {
         try {
             return ANIMATIONS
                     .computeIfAbsent(resource_location, location -> Optional.ofNullable(loadAnimation(location)))
@@ -83,14 +83,14 @@ public final class ChapterCanvasGif {
     }
 
     // 读取 GIF 第一帧尺寸，用于创建时保持原图比例
-    public static Optional<Double> getAspectRatio(ResourceLocation resource_location) {
+    public static Optional<Double> getAspectRatio(Identifier resource_location) {
         return ANIMATIONS
                 .computeIfAbsent(resource_location, location -> Optional.ofNullable(loadAnimation(location)))
                 .map(animation -> (double) animation.width / animation.height);
     }
 
     // 从资源包解码 GIF 帧，并限制尺寸、帧数和总像素量避免占用过量客户端内存
-    private static Animation loadAnimation(ResourceLocation resource_location) {
+    private static Animation loadAnimation(Identifier resource_location) {
         Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(resource_location);
         if (resource.isEmpty()) {
             QuestEnhance.LOGGER.warn("GIF resource was not found: {}", resource_location);
@@ -240,13 +240,13 @@ public final class ChapterCanvasGif {
                 int abgr = (argb & 0xFF00FF00)
                         | ((argb & 0x00FF0000) >>> 16)
                         | ((argb & 0x000000FF) << 16);
-                image.setPixelRGBA(x, y, abgr);
+                image.setPixelABGR(x, y, abgr);
             }
         }
         return image;
     }
 
-    public record GifData(ResourceLocation resource_location) {
+    public record GifData(Identifier resource_location) {
     }
 
     private record GifSize(int width, int height) {
@@ -267,7 +267,7 @@ public final class ChapterCanvasGif {
         private long next_frame_time;
 
         private Animation(
-                ResourceLocation source_location,
+                Identifier source_location,
                 int width,
                 int height,
                 List<NativeImage> frames,
@@ -279,8 +279,8 @@ public final class ChapterCanvasGif {
             this.frame_delays = frame_delays;
             NativeImage texture_pixels = new NativeImage(width, height, true);
             texture_pixels.copyFrom(frames.getFirst());
-            this.texture = new DynamicTexture(texture_pixels);
-            ResourceLocation texture_location = ResourceLocation.fromNamespaceAndPath(
+            this.texture = new DynamicTexture(source_location::toString, texture_pixels);
+            Identifier texture_location = Identifier.fromNamespaceAndPath(
                     QuestEnhance.MOD_ID,
                     "dynamic_gif/" + UUID.nameUUIDFromBytes(source_location.toString().getBytes(StandardCharsets.UTF_8)) + ".png"
             );

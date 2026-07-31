@@ -1,7 +1,7 @@
 package com.quest_enhance.mixin;
 
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface KillTaskAccessor {
     // 读取击杀任务当前配置的实体注册名
     @Accessor("entityTypeId")
-    ResourceLocation quest_enhance$get_entity();
+    Identifier quest_enhance$get_entity();
 }

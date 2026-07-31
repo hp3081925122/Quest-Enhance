@@ -7,24 +7,24 @@ import com.quest_enhance.client.canvas.ChapterCanvasVideo;
 import com.quest_enhance.client.canvas.DecorativeLineMenus;
 import com.quest_enhance.client.integration.KubeJSClickEventBridge;
 import com.quest_enhance.client.media.VideoSupport;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.gui.EditConfigScreen;
+import dev.ftb.mods.ftblibrary.client.icon.IconHelper;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icon;
-import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
+import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.ChapterImageButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
-import dev.ftb.mods.ftbquests.quest.ImageClickAction;
 import dev.ftb.mods.ftbquests.quest.QuestShape;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import org.joml.Matrix3x2fStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.spongepowered.asm.mixin.Final;
@@ -34,7 +34,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -60,36 +59,14 @@ public abstract class ChapterImageButtonMixin {
     }
 
     // 新版 FTB 会忽略无点击动作的章节图片，允许特殊画布元素接收鼠标命中
-    @Redirect(
-            method = {"checkMouseOver", "mousePressed"},
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/quest/ImageClickAction;isNone()Z"
-            )
-    )
-    private boolean quest_enhance$allow_special_canvas_image_click(ImageClickAction click_action) {
-        return click_action.isNone() && !this.quest_enhance$is_special_canvas_image();
-    }
-
     // 拦截新版图片编辑操作，为特殊画布元素打开对应属性页
-    @Redirect(
-            method = "onClicked",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;onEditButtonClicked(Ljava/lang/Runnable;Lnet/minecraft/network/chat/Component;)V"
-            )
-    )
-    private void quest_enhance$open_special_edit_screen(
-            ChapterImage image,
-            Runnable callback,
-            Component title
-    ) {
+    @Inject(method = "openEditScreen", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$open_special_edit_screen(CallbackInfo callback_info) {
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(this.chapterImage);
         Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(this.chapterImage);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(this.chapterImage);
         if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
-            image.onEditButtonClicked(callback, title);
             return;
         }
 
@@ -107,11 +84,10 @@ public abstract class ChapterImageButtonMixin {
                 : "quest_enhance.decorative_anchor";
 
         // 保存时继续发送 FTB 原生章节编辑消息并刷新任务书
-        ConfigGroup group = new ConfigGroup("ftbquests", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("ftbquests", accepted -> {
             if (accepted) {
                 EditObjectMessage.sendToServer(this.chapterImage);
             }
-            callback.run();
         }) {
             // 用实际内容和特殊元素类型替换原生的颜色值与“图片”类型
             @Override
@@ -134,6 +110,7 @@ public abstract class ChapterImageButtonMixin {
                 return group.getName();
             }
         }.openGui();
+        callback_info.cancel();
     }
 
     // 在已选辅助点的右键菜单中加入与任务相同的装饰线操作
@@ -141,7 +118,7 @@ public abstract class ChapterImageButtonMixin {
             method = "onClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftblibrary/ui/BaseScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/ui/ContextMenu;"
+                    target = "Ldev/ftb/mods/ftblibrary/client/gui/widget/BaseScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/client/gui/widget/ContextMenu;"
             ),
             index = 0
     )
@@ -156,7 +133,7 @@ public abstract class ChapterImageButtonMixin {
     // 普通左键点击文字时投递可选 KubeJS 事件，点击视频背景时打开播放器
     @Inject(method = "onClicked", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$open_chapter_video(MouseButton button, CallbackInfo callback_info) {
-        if (!button.isLeft() || Screen.hasControlDown() || Screen.hasAltDown()) {
+        if (!button.isLeft() || Minecraft.getInstance().hasControlDown() || Minecraft.getInstance().hasAltDown()) {
             return;
         }
 
@@ -183,12 +160,15 @@ public abstract class ChapterImageButtonMixin {
             VideoSupport.open(data.path());
             callback_info.cancel();
         });
+        if (this.quest_enhance$is_special_canvas_image()) {
+            callback_info.cancel();
+        }
     }
 
     // 用辅助点、文字或视频预览替换特殊画布元素的原生图片绘制
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$draw_chapter_text(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -210,13 +190,13 @@ public abstract class ChapterImageButtonMixin {
             QuestShape circle = QuestShape.get("circle");
             boolean selected = screen.quest_enhance$get_file().canEdit()
                     && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
-            circle.getShape().withColor(Color4I.DARK_GRAY).draw(graphics, x, y, width, height);
-            circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)).draw(graphics, x, y, width, height);
-            circle.getOutline().withColor(Color4I.rgb(0x808080)).draw(graphics, x, y, width, height);
+            IconHelper.renderIcon(circle.getShape().withColor(Color4I.DARK_GRAY), graphics, x, y, width, height);
+            IconHelper.renderIcon(circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)), graphics, x, y, width, height);
+            IconHelper.renderIcon(circle.getOutline().withColor(Color4I.rgb(0x808080)), graphics, x, y, width, height);
             if (selected) {
                 int selection_alpha = (int) (190.0 + Math.sin(System.currentTimeMillis() * 0.003) * 50.0);
-                circle.getOutline().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
-                circle.getBackground().withColor(Color4I.WHITE.withAlpha(selection_alpha)).draw(graphics, x, y, width, height);
+                IconHelper.renderIcon(circle.getOutline().withColor(Color4I.WHITE.withAlpha(selection_alpha)), graphics, x, y, width, height);
+                IconHelper.renderIcon(circle.getBackground().withColor(Color4I.WHITE.withAlpha(selection_alpha)), graphics, x, y, width, height);
             }
             callback_info.cancel();
             return;
@@ -229,21 +209,21 @@ public abstract class ChapterImageButtonMixin {
             int alpha = transparent ? 100 : this.chapterImage.getAlpha();
             Icon frame = ChapterCanvasGif.getCurrentFrame(gif_data.get().resource_location()).orElse(Color4I.DARK_GRAY);
             Icon tinted_frame = frame.withTint(this.chapterImage.getColor().withAlpha(alpha));
-            PoseStack pose_stack = graphics.pose();
-            pose_stack.pushPose();
+            Matrix3x2fStack pose_stack = graphics.pose();
+            pose_stack.pushMatrix();
             if (this.chapterImage.isAlignToCorner()) {
-                pose_stack.translate(x, y, 0.0F);
-                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-                tinted_frame.draw(graphics, 0, 0, width, height);
+                pose_stack.translate(x, y);
+                pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+                IconHelper.renderIcon(tinted_frame, graphics, 0, 0, width, height);
             } else {
-                pose_stack.translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
-                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-                tinted_frame.draw(graphics, -width / 2, -height / 2, width, height);
+                pose_stack.translate(x + width / 2.0F, y + height / 2.0F);
+                pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+                IconHelper.renderIcon(tinted_frame, graphics, -width / 2, -height / 2, width, height);
             }
-            pose_stack.popPose();
+            pose_stack.popMatrix();
             if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
                 int selection_alpha = (int) (45.0 + Math.sin(System.currentTimeMillis() * 0.003) * 20.0);
-                Color4I.WHITE.withAlpha(selection_alpha).draw(graphics, x, y, width, height);
+                IconHelper.renderIcon(Color4I.WHITE.withAlpha(selection_alpha), graphics, x, y, width, height);
             }
             callback_info.cancel();
             return;
@@ -263,12 +243,12 @@ public abstract class ChapterImageButtonMixin {
             int icon_height = theme.getFontHeight();
 
             // 按原生章节图片的对齐和旋转方式绘制预览区域
-            PoseStack pose_stack = graphics.pose();
-            pose_stack.pushPose();
+            Matrix3x2fStack pose_stack = graphics.pose();
+            pose_stack.pushMatrix();
             if (this.chapterImage.isAlignToCorner()) {
-                pose_stack.translate(x, y, 0.0F);
-                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-                tinted_cover.draw(graphics, 0, 0, width, height);
+                pose_stack.translate(x, y);
+                pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+                IconHelper.renderIcon(tinted_cover, graphics, 0, 0, width, height);
                 theme.drawString(
                         graphics,
                         play_icon,
@@ -278,9 +258,9 @@ public abstract class ChapterImageButtonMixin {
                         2
                 );
             } else {
-                pose_stack.translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
-                pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-                tinted_cover.draw(graphics, -width / 2, -height / 2, width, height);
+                pose_stack.translate(x + width / 2.0F, y + height / 2.0F);
+                pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+                IconHelper.renderIcon(tinted_cover, graphics, -width / 2, -height / 2, width, height);
                 theme.drawString(
                         graphics,
                         play_icon,
@@ -290,12 +270,12 @@ public abstract class ChapterImageButtonMixin {
                         2
                 );
             }
-            pose_stack.popPose();
+            pose_stack.popMatrix();
 
             // 在编辑器中沿用图片对象的选中闪烁效果
             if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
                 int selection_alpha = (int) (45.0 + Math.sin(System.currentTimeMillis() * 0.003) * 20.0);
-                Color4I.WHITE.withAlpha(selection_alpha).draw(graphics, x, y, width, height);
+                IconHelper.renderIcon(Color4I.WHITE.withAlpha(selection_alpha), graphics, x, y, width, height);
             }
             callback_info.cancel();
             return;
@@ -314,25 +294,25 @@ public abstract class ChapterImageButtonMixin {
         Color4I color = this.chapterImage.getColor().withAlpha(alpha);
 
         // 按原生章节图片的中心或左上角对齐方式应用旋转和缩放
-        PoseStack pose_stack = graphics.pose();
-        pose_stack.pushPose();
+        Matrix3x2fStack pose_stack = graphics.pose();
+        pose_stack.pushMatrix();
         if (this.chapterImage.isAlignToCorner()) {
-            pose_stack.translate(x, y, 0.0F);
-            pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-            pose_stack.scale(scale, scale, 1.0F);
+            pose_stack.translate(x, y);
+            pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+            pose_stack.scale(scale, scale);
             theme.drawString(graphics, text, 0, 0, color, 2);
         } else {
-            pose_stack.translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
-            pose_stack.mulPose(Axis.ZP.rotationDegrees((float) this.chapterImage.getRotation()));
-            pose_stack.scale(scale, scale, 1.0F);
+            pose_stack.translate(x + width / 2.0F, y + height / 2.0F);
+            pose_stack.rotate(Mth.DEG_TO_RAD * (float) this.chapterImage.getRotation());
+            pose_stack.scale(scale, scale);
             theme.drawString(graphics, text, -text_width / 2, -text_height / 2, color, 2);
         }
-        pose_stack.popPose();
+        pose_stack.popMatrix();
 
         // 在编辑器中沿用图片对象的选中闪烁效果
         if (screen.quest_enhance$get_selected_objects().contains(this.chapterImage)) {
             int selection_alpha = (int) (45.0 + Math.sin(System.currentTimeMillis() * 0.003) * 20.0);
-            Color4I.WHITE.withAlpha(selection_alpha).draw(graphics, x, y, width, height);
+            IconHelper.renderIcon(Color4I.WHITE.withAlpha(selection_alpha), graphics, x, y, width, height);
         }
         callback_info.cancel();
     }

@@ -2,24 +2,25 @@ package com.quest_enhance.client.quest;
 
 import com.quest_enhance.QuestEnhance;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 
 public final class KillTaskEntityPreview {
-    private ResourceLocation cached_entity_id;
+    private Identifier cached_entity_id;
     private ClientLevel cached_level;
     private LivingEntity cached_entity;
 
     // 创建并缓存预览实体，然后按指定图标区域自动缩放绘制
     public boolean render(
-            ResourceLocation entity_id,
-            GuiGraphics graphics,
+            Identifier entity_id,
+            GuiGraphicsExtractor graphics,
             int x,
             int y,
             int width,
@@ -38,7 +39,7 @@ public final class KillTaskEntityPreview {
             this.cached_entity = null;
             try {
                 EntityType<?> entity_type = BuiltInRegistries.ENTITY_TYPE.getOptional(entity_id).orElse(null);
-                Entity entity = entity_type == null ? null : entity_type.create(level);
+                Entity entity = entity_type == null ? null : entity_type.create(level, EntitySpawnReason.COMMAND);
                 if (entity instanceof LivingEntity living_entity) {
                     this.cached_entity = living_entity;
                 }

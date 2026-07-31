@@ -1,8 +1,8 @@
 package com.quest_enhance.client.description;
 
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
-import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.gui.EditConfigScreen;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
 import net.minecraft.network.chat.Component;
 
 import java.nio.file.Path;
@@ -24,7 +24,7 @@ public final class DescriptionVideoConfigScreen {
         };
 
         // 确认时插入带自定义文字的视频标记，取消时只返回描述编辑器
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 editor.quest_enhance$insert_at_end_of_line(
                         "\n" + QuestDescriptionVideo.createMarkup(video_path, display_text[0])

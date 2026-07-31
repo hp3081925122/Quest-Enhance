@@ -6,7 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -155,7 +155,7 @@ public final class CleanupImagesCommand {
             try {
                 long image_size = Files.size(image_path);
                 Files.delete(image_path);
-                minecraft.getTextureManager().release(ResourceLocation.fromNamespaceAndPath(
+                minecraft.getTextureManager().release(Identifier.fromNamespaceAndPath(
                         QuestEnhance.MOD_ID,
                         "textures/ftb/" + file_name
                 ));

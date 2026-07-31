@@ -1,12 +1,15 @@
 package com.quest_enhance.client.description;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.quest.QuestVideoData;
-import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
+import dev.ftb.mods.ftblibrary.client.util.ClientTextComponentUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.nio.charset.StandardCharsets;
@@ -17,6 +20,7 @@ import java.util.Optional;
 
 public final class QuestDescriptionVideo {
     public static final String CLICK_PREFIX = "quest_enhance_video/";
+    public static final Identifier CLICK_ACTION = Identifier.fromNamespaceAndPath(QuestEnhance.MOD_ID, "description_video");
     private static final String PROPERTY = "quest_enhance_video";
     private static final String LABEL_PROPERTY = "quest_enhance_video_label";
     private static final String LEGACY_TEXT_PROPERTY = "quest_enhance_video_text";
@@ -91,14 +95,8 @@ public final class QuestDescriptionVideo {
         Style style = Style.EMPTY
                 .withColor(ChatFormatting.AQUA)
                 .withUnderlined(true)
-                .withClickEvent(new ClickEvent(
-                        ClickEvent.Action.CHANGE_PAGE,
-                        CLICK_PREFIX + encoded_path
-                ))
-                .withHoverEvent(new HoverEvent(
-                        HoverEvent.Action.SHOW_TEXT,
-                        Component.translatable("quest_enhance.video.description.tooltip")
-                ));
+                .withClickEvent(new ClickEvent.Custom(CLICK_ACTION, Optional.of(StringTag.valueOf(encoded_path))))
+                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("quest_enhance.video.description.tooltip")));
         return Component.literal(display_text)
                 .withStyle(style);
     }

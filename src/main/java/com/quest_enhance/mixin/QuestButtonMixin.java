@@ -8,9 +8,9 @@ import com.quest_enhance.client.quest.KillTaskEntityPreview;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
 import dev.ftb.mods.ftblibrary.icon.Icon;
-import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
+import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestLinkButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
@@ -18,10 +18,9 @@ import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -68,7 +67,7 @@ public abstract class QuestButtonMixin {
     // 在配置了视频的任务节点右下角绘制独立播放区域
     @Inject(method = "draw", at = @At("TAIL"))
     private void quest_enhance$draw_video_button(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -85,7 +84,7 @@ public abstract class QuestButtonMixin {
         int button_x = x + width - button_size;
         int button_y = y + height - button_size;
         graphics.fill(button_x, button_y, button_x + button_size, button_y + button_size, 0xD0000000);
-        graphics.drawCenteredString(
+        graphics.centeredText(
                 Minecraft.getInstance().font,
                 Component.literal("▶"),
                 button_x + button_size / 2,
@@ -97,7 +96,7 @@ public abstract class QuestButtonMixin {
     // 只拦截播放区域的普通左键，节点其余区域仍按 FTB 原逻辑打开任务
     @Inject(method = "onClicked", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$open_quest_video(MouseButton mouse_button, CallbackInfo callback_info) {
-        if (!mouse_button.isLeft() || Screen.hasControlDown() || Screen.hasAltDown()) {
+        if (!mouse_button.isLeft() || Minecraft.getInstance().hasControlDown() || Minecraft.getInstance().hasAltDown()) {
             return;
         }
 
@@ -163,7 +162,7 @@ public abstract class QuestButtonMixin {
             )
     )
     private void quest_enhance$draw_quest_entity_model(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -171,7 +170,7 @@ public abstract class QuestButtonMixin {
             int height,
             CallbackInfo callback_info
     ) {
-        ResourceLocation entity_id = this.quest_enhance$get_entity_model();
+        Identifier entity_id = this.quest_enhance$get_entity_model();
         if (entity_id == null) {
             return;
         }
@@ -198,13 +197,13 @@ public abstract class QuestButtonMixin {
 
     // 手动模型优先，普通自定义图标次之，最后使用单个击杀任务的目标实体
     @Unique
-    private ResourceLocation quest_enhance$get_entity_model() {
+    private Identifier quest_enhance$get_entity_model() {
         if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()) {
             return null;
         }
 
         ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
-        ResourceLocation explicit_model = QuestEntityModel.getEntityModel(raw_icon).orElse(null);
+        Identifier explicit_model = QuestEntityModel.getEntityModel(raw_icon).orElse(null);
         if (explicit_model != null) {
             return explicit_model;
         }

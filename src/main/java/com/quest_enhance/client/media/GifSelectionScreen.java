@@ -2,12 +2,12 @@ package com.quest_enhance.client.media;
 
 import com.quest_enhance.QuestEnhance;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.SimpleTextButton;
-import dev.ftb.mods.ftblibrary.ui.misc.AbstractButtonListScreen;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.widget.SimpleTextButton;
+import dev.ftb.mods.ftblibrary.client.gui.screens.AbstractButtonListScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
@@ -17,11 +17,11 @@ import java.util.function.Consumer;
 
 public final class GifSelectionScreen extends AbstractButtonListScreen {
     private final Panel parent_panel;
-    private final ResourceLocation current_gif;
-    private final Consumer<ResourceLocation> selection_callback;
-    private final List<ResourceLocation> gifs;
+    private final Identifier current_gif;
+    private final Consumer<Identifier> selection_callback;
+    private final List<Identifier> gifs;
 
-    private GifSelectionScreen(Panel parent_panel, ResourceLocation current_gif, Consumer<ResourceLocation> selection_callback) {
+    private GifSelectionScreen(Panel parent_panel, Identifier current_gif, Consumer<Identifier> selection_callback) {
         this.parent_panel = parent_panel;
         this.current_gif = current_gif;
         this.selection_callback = selection_callback;
@@ -29,13 +29,13 @@ public final class GifSelectionScreen extends AbstractButtonListScreen {
                 .listResources("textures", location -> location.getNamespace().equals(QuestEnhance.MOD_ID)
                         && location.getPath().toLowerCase(java.util.Locale.ROOT).endsWith(".gif"))
                 .keySet());
-        this.gifs.sort(Comparator.comparing(ResourceLocation::toString));
+        this.gifs.sort(Comparator.comparing(Identifier::toString));
         this.setTitle(Component.translatable("quest_enhance.gif.select"));
         this.setHasSearchBox(true);
     }
 
     // 使用 FTB 原生列表窗口选择当前资源包中的 GIF 文件
-    public static void open(Panel parent_panel, ResourceLocation current_gif, Consumer<ResourceLocation> selection_callback) {
+    public static void open(Panel parent_panel, Identifier current_gif, Consumer<Identifier> selection_callback) {
         new GifSelectionScreen(parent_panel, current_gif, selection_callback).openGui();
     }
 
@@ -53,7 +53,7 @@ public final class GifSelectionScreen extends AbstractButtonListScreen {
         }
 
         // 显示完整资源标识，避免同名 GIF 在不同路径下难以区分
-        for (ResourceLocation gif : this.gifs) {
+        for (Identifier gif : this.gifs) {
             Component name = Component.literal(gif.toString());
             Component label = gif.equals(this.current_gif)
                     ? Component.translatable("quest_enhance.gif.selected", name)

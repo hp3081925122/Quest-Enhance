@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.141'
+    id 'net.neoforged.moddev' version '2.0.143'
     id 'idea'
 }
 
@@ -12,7 +12,7 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
@@ -59,16 +59,14 @@ dependencies {
     compileOnly("dev.architectury:architectury-neoforge:${architectury_version}") {
         transitive = false
     }
-    compileOnly("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}") {
-        transitive = false
-    }
+    compileOnly("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}")
     compileOnly("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
         transitive = false
     }
     compileOnly("maven.modrinth:watermedia:${watermedia_version}") {
         transitive = false
     }
-    compileOnly("dev.latvian.mods:kubejs-neoforge:2101.7.2-build.277")
+    compileOnly("dev.latvian.mods:kubejs-neoforge:${kubejs_version}")
 
     localRuntime("dev.architectury:architectury-neoforge:${architectury_version}") {
         transitive = false

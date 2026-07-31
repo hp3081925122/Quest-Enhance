@@ -6,18 +6,18 @@ import com.quest_enhance.client.canvas.ChapterCanvasText;
 import com.quest_enhance.client.canvas.ChapterCanvasVideo;
 import com.quest_enhance.client.media.GifConfig;
 import com.quest_enhance.client.media.VideoConfig;
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
-import dev.ftb.mods.ftblibrary.config.NameMap;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableImageResource;
+import dev.ftb.mods.ftblibrary.util.NameMap;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
-import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
+import dev.ftb.mods.ftbquests.client.config.EditableQuestObject;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -69,8 +69,8 @@ public abstract class ChapterImageMixin {
     private int order;
 
     // 为画布文字、视频和辅助点提供专用属性页，隐藏无意义的图片和点击字段
-    @Inject(method = "fillConfigGroup", at = @At("HEAD"), cancellable = true)
-    private void quest_enhance$fill_special_config(ConfigGroup config, CallbackInfo callback_info) {
+    @Inject(method = "fillEditableConfigGroup", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$fill_special_config(EditableConfigGroup config, CallbackInfo callback_info) {
         ChapterImage image = (ChapterImage) (Object) this;
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(image);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(image);
@@ -92,11 +92,11 @@ public abstract class ChapterImageMixin {
             ).setNameKey("quest_enhance.chapter_text.text");
 
             // 构建当前全部已加载字体组成的原生枚举选择器
-            List<ResourceLocation> font_ids = ChapterCanvasText.getAvailableFonts();
+            List<Identifier> font_ids = ChapterCanvasText.getAvailableFonts();
             if (!font_ids.contains(data.font())) {
                 font_ids.add(data.font());
             }
-            NameMap<ResourceLocation> fonts = NameMap.of(ChapterCanvasText.DEFAULT_FONT, font_ids)
+            NameMap<Identifier> fonts = NameMap.of(ChapterCanvasText.DEFAULT_FONT, font_ids)
                     .name(font -> Component.literal(font.toString()))
                     .create();
             config.addEnum(
@@ -117,10 +117,10 @@ public abstract class ChapterImageMixin {
             ).setNameKey("quest_enhance.video.path");
             config.add(
                     "cover",
-                    new ImageResourceConfig(),
-                    ImageResourceConfig.getResourceLocation(image.getImage()),
+                    new EditableImageResource(),
+                    EditableImageResource.getIdentifier(image.getImage()),
                     value -> image.setImage(Icon.getIcon(value)),
-                    ImageResourceConfig.NONE
+                    EditableImageResource.NONE
             ).setNameKey("quest_enhance.chapter_video.cover");
         } else if (gif_data.isPresent()) {
             ChapterCanvasGif.GifData data = gif_data.get();
@@ -168,9 +168,9 @@ public abstract class ChapterImageMixin {
 
         // 保留原生依赖任务控制，确保文字可按任务进度显示
         Predicate<QuestObjectBase> dependency_types = object -> object == null || object instanceof Quest;
-        ((ConfigQuestObject) config.add(
+        ((EditableQuestObject) config.add(
                 "dependency",
-                new ConfigQuestObject(dependency_types),
+                new EditableQuestObject(dependency_types),
                 this.dependency,
                 value -> this.dependency = value,
                 null

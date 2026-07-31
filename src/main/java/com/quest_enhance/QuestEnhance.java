@@ -45,7 +45,7 @@ public final class QuestEnhance {
         mod_event_bus.addListener(this::addPackFinder);
 
         // 只在客户端模组总线上注册任务描述视频解析器
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             mod_event_bus.addListener(QuestDescriptionGif::clientSetup);
             mod_event_bus.addListener(QuestDescriptionVideo::clientSetup);
             mod_event_bus.addListener(QuestDescriptionTable::clientSetup);
@@ -93,7 +93,7 @@ public final class QuestEnhance {
             );
             Pack pack = Pack.readMetaAndCreate(
                     pack_location,
-                    BuiltInPackSource.fromName(location -> new PathPackResources(location, pack_root)),
+                    new PathPackResources.PathResourcesSupplier(pack_root),
                     PackType.CLIENT_RESOURCES,
                     new PackSelectionConfig(true, Pack.Position.TOP, false)
             );

@@ -1,35 +1,93 @@
 package com.quest_enhance.client.media;
 
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
-import org.joml.Matrix4f;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.textures.TextureFormat;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public final class VideoRenderHelper {
+    private static GpuTextureView texture_view;
+    private static int texture_id = -1;
+    private static int texture_width;
+    private static int texture_height;
+
     private VideoRenderHelper() {
     }
 
-    // 将 WaterMedia 提供的原始 OpenGL 纹理绘制到 GUI 矩形中
-    public static void draw(GuiGraphics graphics, int texture, int left, int top, int right, int bottom) {
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.setShaderTexture(0, texture);
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
+    // 将 WaterMedia 持有的 OpenGL 纹理包装为只借用的 Minecraft GPU 纹理后提交到 GUI 渲染队列
+    public static void draw(
+            GuiGraphicsExtractor graphics,
+            long texture,
+            int source_width,
+            int source_height,
+            int left,
+            int top,
+            int right,
+            int bottom
+    ) {
+        if (texture <= 0L || texture > Integer.MAX_VALUE) {
+            return;
+        }
 
-        // 按视频缓冲区方向设置纹理坐标，避免画面上下颠倒
-        Matrix4f matrix = graphics.pose().last().pose();
-        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-        buffer.addVertex(matrix, left, top, 0.0F).setUv(0.0F, 0.0F);
-        buffer.addVertex(matrix, left, bottom, 0.0F).setUv(0.0F, 1.0F);
-        buffer.addVertex(matrix, right, bottom, 0.0F).setUv(1.0F, 1.0F);
-        buffer.addVertex(matrix, right, top, 0.0F).setUv(1.0F, 0.0F);
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
-        RenderSystem.disableBlend();
+        int raw_texture_id = (int) texture;
+        if (texture_view == null || texture_id != raw_texture_id || texture_width != source_width || texture_height != source_height) {
+            release();
+            texture_view = RenderSystem.getDevice().createTextureView(new BorrowedGlTexture(raw_texture_id, source_width, source_height));
+            texture_id = raw_texture_id;
+            texture_width = source_width;
+            texture_height = source_height;
+        }
+
+        // WaterMedia 输出的纹理坐标与旧版手动四边形保持一致，避免画面上下颠倒
+        graphics.blit(
+                texture_view,
+                RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+                left,
+                top,
+                right,
+                bottom,
+                0.0F,
+                1.0F,
+                0.0F,
+                1.0F
+        );
+    }
+
+    // 仅释放 Minecraft 创建的纹理视图，原始 OpenGL 纹理由 WaterMedia 自己管理
+    public static void release() {
+        if (texture_view != null) {
+            texture_view.close();
+            texture_view = null;
+        }
+        texture_id = -1;
+        texture_width = 0;
+        texture_height = 0;
+    }
+
+    private static final class BorrowedGlTexture extends GlTexture {
+        private BorrowedGlTexture(int texture_id, int width, int height) {
+            super(
+                    GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING,
+                    "WaterMedia video texture",
+                    TextureFormat.RGBA8,
+                    width,
+                    height,
+                    1,
+                    1,
+                    texture_id
+            );
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public boolean isClosed() {
+            return false;
+        }
     }
 }

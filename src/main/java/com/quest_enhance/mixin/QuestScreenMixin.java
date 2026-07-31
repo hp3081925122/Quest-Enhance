@@ -6,8 +6,9 @@ import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.mojang.datafixers.util.Pair;
 import dev.architectury.networking.NetworkManager;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.Widget;
-import dev.ftb.mods.ftblibrary.ui.input.Key;
+import dev.ftb.mods.ftblibrary.platform.network.Play2ServerNetworking;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
+import dev.ftb.mods.ftblibrary.client.gui.input.Key;
 import dev.ftb.mods.ftbquests.client.gui.CustomToast;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
@@ -72,7 +73,7 @@ public abstract class QuestScreenMixin {
 
                 quest.copyToClipboard();
                 QuestEnhance.LOGGER.debug("Resolved linked quest copy: quest={}", quest.getId());
-                Minecraft.getInstance().getToasts().addToast(new CustomToast(
+                Minecraft.getInstance().getToastManager().addToast(new CustomToast(
                         Component.translatable("ftbquests.quest.copied"),
                         Icons.INFO,
                         Component.literal(quest.getTitle().getString())
@@ -112,7 +113,7 @@ public abstract class QuestScreenMixin {
                 anchor_x,
                 anchor_y
         );
-        Minecraft.getInstance().getToasts().addToast(new CustomToast(
+        Minecraft.getInstance().getToastManager().addToast(new CustomToast(
                 Component.translatable("ftbquests.quest.copied"),
                 Icons.INFO,
                 Component.translatable("quest_enhance.multi_copy.count", copied_objects.size())
@@ -194,7 +195,7 @@ public abstract class QuestScreenMixin {
             return;
         }
 
-        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
+        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
         ((QuestScreen) (Object) this).refreshQuestPanel();
         callback_info.setReturnValue(true);
     }

@@ -3,14 +3,16 @@ package com.quest_enhance.client.media;
 import com.quest_enhance.client.quest.QuestVideoData;
 import com.quest_enhance.QuestEnhance;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
-import org.watermedia.api.player.PlayerAPI;
-import org.watermedia.api.player.videolan.VideoPlayer;
+import org.watermedia.api.media.MRL;
+import org.watermedia.api.media.MediaAPI;
+import org.watermedia.api.media.players.MediaPlayer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,7 +28,8 @@ public final class VideoPlayerScreen extends Screen {
     private final Path resolved_path;
     private final Path playback_path;
     private final Component error_message;
-    private VideoPlayer player;
+    private MRL media;
+    private MediaPlayer player;
     private Button play_pause_button;
     private Button speed_button;
     private Button mute_button;
@@ -35,6 +38,7 @@ public final class VideoPlayerScreen extends Screen {
     private int volume = 100;
     private boolean muted;
     private boolean started;
+    private boolean player_creation_attempted;
     private boolean playback_error_logged;
     private long last_duration;
 
@@ -63,14 +67,14 @@ public final class VideoPlayerScreen extends Screen {
             error_message = Component.translatable("quest_enhance.video.error.invalid_path", video_path);
         } else if (!Files.isRegularFile(resolved_path.get())) {
             error_message = Component.translatable("quest_enhance.video.error.missing", video_path);
-        } else if (!PlayerAPI.isReady()) {
+        } else if (!MediaAPI.ffmpegLoaded()) {
             error_message = Component.translatable("quest_enhance.video.error.backend");
         } else {
             try {
                 playback_path = QuestVideoData.prepareForPlayback(resolved_path.get());
             } catch (IOException exception) {
                 QuestEnhance.LOGGER.error(
-                        "Failed to prepare an ASCII video path for VLC: source={}",
+                        "Failed to prepare an ASCII video path for WaterMedia: source={}",
                         resolved_path.get(),
                         exception
                 );
@@ -111,10 +115,10 @@ public final class VideoPlayerScreen extends Screen {
                 Component.translatable("quest_enhance.video.pause"),
                 button -> {
                     if (this.player != null) {
-                        if (this.player.isEnded() || this.player.isStopped() || this.player.isBroken()) {
+                        if (this.player.ended() || this.player.stopped() || this.player.error()) {
                             this.restartPlayer();
                         } else {
-                            this.player.togglePlayback();
+                            this.player.togglePlay();
                         }
                     }
                 }
@@ -124,7 +128,7 @@ public final class VideoPlayerScreen extends Screen {
                 button -> {
                     if (this.player != null) {
                         this.speed_index = (this.speed_index + 1) % SPEEDS.length;
-                        this.player.setSpeed(SPEEDS[this.speed_index]);
+                        this.player.speed(SPEEDS[this.speed_index]);
                         this.speed_button.setMessage(this.speedText());
                     }
                 }
@@ -136,8 +140,7 @@ public final class VideoPlayerScreen extends Screen {
                 button -> {
                     if (this.player != null) {
                         this.muted = !this.muted;
-                        this.player.setVolume(this.muted ? 0 : this.volume);
-                        this.player.setMuteMode(this.muted);
+                        this.player.mute(this.muted);
                         this.mute_button.setMessage(Component.translatable(
                                 this.muted ? "quest_enhance.video.unmute" : "quest_enhance.video.mute"
                         ));
@@ -154,18 +157,27 @@ public final class VideoPlayerScreen extends Screen {
 
     @Override
     public void tick() {
+        if (this.player == null && this.media != null) {
+            if (this.media.status().loaded()) {
+                this.createPlayer();
+            } else if (this.media.status().failed() && !this.playback_error_logged) {
+                this.playback_error_logged = true;
+                QuestEnhance.LOGGER.error("Video media resolution failed: source={}, playback={}", this.resolved_path, this.playback_path, this.media.exception());
+            }
+        }
+
         // 用播放器实时状态刷新按钮和进度显示
         if (this.player != null) {
-            long duration = Math.max(this.player.getDuration(), this.player.getMediaInfoDuration());
+            long duration = this.player.duration();
             if (duration > 0L) {
                 this.last_duration = duration;
             }
             this.play_pause_button.setMessage(Component.translatable(
-                    this.player.isBroken()
+                    this.player.error()
                             ? "quest_enhance.video.retry"
-                            : this.player.isEnded()
+                            : this.player.ended()
                             ? "quest_enhance.video.replay"
-                            : this.player.isPaused()
+                            : this.player.paused()
                             ? "quest_enhance.video.play"
                             : "quest_enhance.video.pause"
             ));
@@ -175,17 +187,16 @@ public final class VideoPlayerScreen extends Screen {
             this.progress_slider.syncFromPlayer();
 
             // 播放器首次进入错误状态时记录现场，方便继续定位解码问题
-            if (this.player.isBroken() && !this.playback_error_logged) {
+            if (this.player.error() && !this.playback_error_logged) {
                 this.playback_error_logged = true;
                 QuestEnhance.LOGGER.error(
-                        "Video playback failed: source={}, playback={}, state={}, valid={}, size={}x{}, time={}, duration={}",
+                        "Video playback failed: source={}, playback={}, state={}, size={}x{}, time={}, duration={}",
                         this.resolved_path,
                         this.playback_path,
-                        this.player.getStateName(),
-                        this.player.isValid(),
+                        this.player.status(),
                         this.player.width(),
                         this.player.height(),
-                        this.player.getTime(),
+                        this.player.time(),
                         duration
                 );
             }
@@ -193,11 +204,15 @@ public final class VideoPlayerScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouse_x, int mouse_y, float partial_tick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouse_x, int mouse_y, float partial_tick) {
         graphics.fill(0, 0, this.width, this.height, 0xFF000000);
+    }
 
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouse_x, int mouse_y, float partial_tick) {
         // 按原始宽高比将视频完整放入控制栏上方区域
-        if (this.player != null && this.player.width() > 1 && this.player.height() > 1 && !this.player.isBroken()) {
+        long texture = this.player == null ? MediaPlayer.NO_TEXTURE : this.player.texture();
+        if (this.player != null && this.player.width() > 1 && this.player.height() > 1 && texture != MediaPlayer.NO_TEXTURE && !this.player.error()) {
             int available_height = Math.max(1, this.height - 54);
             double scale = Math.min(
                     (double) this.width / this.player.width(),
@@ -209,7 +224,9 @@ public final class VideoPlayerScreen extends Screen {
             int video_y = (available_height - video_height) / 2;
             VideoRenderHelper.draw(
                     graphics,
-                    this.player.texture(),
+                    texture,
+                    this.player.width(),
+                    this.player.height(),
                     video_x,
                     video_y,
                     video_x + video_width,
@@ -218,50 +235,47 @@ public final class VideoPlayerScreen extends Screen {
         } else {
             Component status = this.error_message != null
                     ? this.error_message
-                    : this.player != null && this.player.isEnded()
+                    : this.player != null && this.player.ended()
                     ? Component.translatable("quest_enhance.video.ended")
-                    : this.player != null && this.player.isBroken()
+                    : this.player != null && this.player.error()
+                    || this.media != null && this.media.status().failed()
                     ? Component.translatable("quest_enhance.video.error.playback")
                     : Component.translatable("quest_enhance.video.loading");
-            graphics.drawCenteredString(this.font, status, this.width / 2, this.height / 2 - 5, 0xFFFFFFFF);
+            graphics.centeredText(this.font, status, this.width / 2, this.height / 2 - 5, 0xFFFFFFFF);
         }
 
         // 在视频上方绘制半透明控制区和原生控件
         graphics.fill(0, Math.max(0, this.height - 52), this.width, this.height, 0xB0000000);
-        graphics.drawCenteredString(this.font, this.video_path, this.width / 2, 12, 0xFFD8D8D8);
-        super.render(graphics, mouse_x, mouse_y, partial_tick);
+        graphics.centeredText(this.font, this.video_path, this.width / 2, 12, 0xFFD8D8D8);
+        super.extractRenderState(graphics, mouse_x, mouse_y, partial_tick);
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouse_x, int mouse_y, float partial_tick) {
-    }
-
-    @Override
-    public boolean keyPressed(int key_code, int scan_code, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
         // 提供播放器常用快捷操作并保留原生 Esc 返回行为
         if (this.player != null) {
-            if (key_code == GLFW.GLFW_KEY_SPACE) {
-                if (this.player.isEnded() || this.player.isStopped() || this.player.isBroken()) {
+            if (event.key() == GLFW.GLFW_KEY_SPACE) {
+                if (this.player.ended() || this.player.stopped() || this.player.error()) {
                     this.restartPlayer();
                 } else {
-                    this.player.togglePlayback();
+                    this.player.togglePlay();
                 }
                 return true;
             }
-            if (key_code == GLFW.GLFW_KEY_LEFT) {
-                this.player.rewind();
+            if (event.key() == GLFW.GLFW_KEY_LEFT) {
+                this.player.skipTime(-5_000L);
                 return true;
             }
-            if (key_code == GLFW.GLFW_KEY_RIGHT) {
-                this.player.foward();
+            if (event.key() == GLFW.GLFW_KEY_RIGHT) {
+                this.player.skipTime(5_000L);
                 return true;
             }
         }
-        if (key_code == GLFW.GLFW_KEY_F) {
+        if (event.key() == GLFW.GLFW_KEY_F) {
             this.toggleFullscreen();
             return true;
         }
-        return super.keyPressed(key_code, scan_code, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
@@ -288,7 +302,7 @@ public final class VideoPlayerScreen extends Screen {
                     "Recreating video player: source={}, playback={}, previousState={}, muted={}, configuredVolume={}",
                     this.resolved_path,
                     this.playback_path,
-                    this.player.getStateName(),
+                    this.player.status(),
                     this.muted,
                     this.volume
             );
@@ -296,20 +310,43 @@ public final class VideoPlayerScreen extends Screen {
         this.releasePlayer();
         this.last_duration = 0L;
         this.playback_error_logged = false;
-        this.player = new VideoPlayer(this.minecraft);
-        this.player.setVolume(this.muted ? 0 : this.volume);
-        this.player.setMuteMode(this.muted);
-        this.player.setSpeed(SPEEDS[this.speed_index]);
-        this.player.start(this.playback_path.toUri());
+        this.player_creation_attempted = false;
+        this.media = MediaAPI.mrl(this.playback_path.toUri());
+        this.createPlayer();
+    }
+
+    // 等待 WaterMedia 完成媒体地址解析后创建播放器，避免阻塞客户端线程
+    private void createPlayer() {
+        if (this.media == null || !this.media.status().loaded() || this.player != null || this.player_creation_attempted) {
+            return;
+        }
+
+        this.player_creation_attempted = true;
+        this.player = MediaAPI.createPlayer(
+                this.media,
+                () -> MediaAPI.glEngine(Thread.currentThread(), this.minecraft::execute),
+                MediaAPI::alEngine
+        );
+        if (this.player != null) {
+            this.player.volume(this.volume);
+            this.player.mute(this.muted);
+            this.player.speed(SPEEDS[this.speed_index]);
+            this.player.start();
+        } else if (!this.playback_error_logged) {
+            this.playback_error_logged = true;
+            QuestEnhance.LOGGER.error("Video player creation failed: source={}, playback={}", this.resolved_path, this.playback_path);
+        }
     }
 
     // 停止解码并释放原生播放器和视频纹理
     private void releasePlayer() {
+        VideoRenderHelper.release();
         if (this.player != null) {
-            this.player.stop();
             this.player.release();
             this.player = null;
         }
+        this.media = null;
+        this.player_creation_attempted = false;
     }
 
     // 优先读取播放状态时长，并用媒体信息和最近有效值兜底
@@ -317,7 +354,7 @@ public final class VideoPlayerScreen extends Screen {
         if (this.player == null) {
             return 0L;
         }
-        long duration = Math.max(this.player.getDuration(), this.player.getMediaInfoDuration());
+        long duration = this.player.duration();
         return duration > 0L ? duration : this.last_duration;
     }
 
@@ -355,8 +392,8 @@ public final class VideoPlayerScreen extends Screen {
         // 从播放器读取进度，但实际拖动仍由原生滑块负责
         private void syncFromPlayer() {
             long duration = VideoPlayerScreen.this.playerDuration();
-            long time = VideoPlayerScreen.this.player.getTime();
-            if (VideoPlayerScreen.this.player.isEnded()) {
+            long time = VideoPlayerScreen.this.player.time();
+            if (VideoPlayerScreen.this.player.ended()) {
                 time = duration;
             }
             this.value = duration > 0L ? Math.clamp((double) time / duration, 0.0D, 1.0D) : 0.0D;
@@ -366,8 +403,8 @@ public final class VideoPlayerScreen extends Screen {
         @Override
         protected void updateMessage() {
             long duration = VideoPlayerScreen.this.playerDuration();
-            long time = VideoPlayerScreen.this.player == null ? 0L : VideoPlayerScreen.this.player.getTime();
-            if (VideoPlayerScreen.this.player != null && VideoPlayerScreen.this.player.isEnded()) {
+            long time = VideoPlayerScreen.this.player == null ? 0L : VideoPlayerScreen.this.player.time();
+            if (VideoPlayerScreen.this.player != null && VideoPlayerScreen.this.player.ended()) {
                 time = duration;
             }
             this.setMessage(Component.literal(formatTime(time) + " / " + formatTime(duration)));
@@ -378,7 +415,7 @@ public final class VideoPlayerScreen extends Screen {
             if (VideoPlayerScreen.this.player != null) {
                 long duration = VideoPlayerScreen.this.playerDuration();
                 if (duration > 0L) {
-                    VideoPlayerScreen.this.player.seekTo((long) (duration * this.value));
+                    VideoPlayerScreen.this.player.seek((long) (duration * this.value));
                 }
             }
         }
@@ -402,8 +439,9 @@ public final class VideoPlayerScreen extends Screen {
         protected void applyValue() {
             VideoPlayerScreen.this.volume = (int) Math.round(this.value * 100.0D);
             if (VideoPlayerScreen.this.player != null) {
-                VideoPlayerScreen.this.player.setVolume(VideoPlayerScreen.this.volume);
+                VideoPlayerScreen.this.player.volume(VideoPlayerScreen.this.volume);
                 VideoPlayerScreen.this.muted = VideoPlayerScreen.this.volume == 0;
+                VideoPlayerScreen.this.player.mute(VideoPlayerScreen.this.muted);
                 VideoPlayerScreen.this.mute_button.setMessage(Component.translatable(
                         VideoPlayerScreen.this.muted
                                 ? "quest_enhance.video.unmute"

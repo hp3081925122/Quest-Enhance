@@ -1,12 +1,5 @@
 package com.quest_enhance.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.DecorativeDependencyLines;
 import com.quest_enhance.HiddenDependencyLines;
@@ -18,21 +11,22 @@ import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.TaskTypeSelectionScreen;
-import dev.architectury.networking.NetworkManager;
-import dev.ftb.mods.ftblibrary.config.StringConfig;
-import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableString;
+import dev.ftb.mods.ftblibrary.client.config.gui.EditStringConfigOverlay;
+import dev.ftb.mods.ftblibrary.platform.network.Play2ServerNetworking;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.icon.ImageIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import dev.ftb.mods.ftblibrary.ui.Widget;
-import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
+import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
+import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
+import dev.ftb.mods.ftbquests.mixin.GuiGraphicsMixin;
 import dev.ftb.mods.ftbquests.net.CreateObjectMessage;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
@@ -42,10 +36,15 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
 import net.minecraft.network.chat.Component;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
-import com.mojang.math.Axis;
-import org.joml.Matrix4f;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.render.TextureSetup;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.state.gui.BlitRenderState;
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
+import net.minecraft.util.ARGB;
+import org.joml.Matrix3x2f;
+import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -95,41 +94,49 @@ public abstract class QuestPanelMixin {
             method = "drawOffsetBackground",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestPanel;renderConnection(Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Lcom/mojang/blaze3d/vertex/PoseStack;FIIIIIFLcom/mojang/blaze3d/vertex/Tesselator;)V"
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestPanel;renderConnection(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Ldev/ftb/mods/ftblibrary/icon/Icon;Ldev/ftb/mods/ftblibrary/client/gui/widget/Widget;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Lorg/joml/Matrix3x2fStack;FIIIIIF)V"
             )
     )
     private void quest_enhance$render_hidden_dependency_line(
             QuestPanel panel,
-            QuestButton source,
+            GuiGraphicsExtractor graphics,
+            Icon<?> dependency_line_texture,
+            Widget source,
             QuestButton dependency,
-            PoseStack pose,
+            Matrix3x2fStack pose,
             float half_width,
             int red,
             int green,
             int blue,
             int start_alpha,
             int end_alpha,
-            float texture_offset,
-            Tesselator tesselator
+            float texture_offset
     ) {
+        if (!(source instanceof QuestButton source_button)) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset
+            );
+            return;
+        }
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
         if (chapter == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
-                    source, dependency, pose, half_width, red, green, blue,
-                    start_alpha, end_alpha, texture_offset, tesselator
+                    graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset
             );
             return;
         }
 
-        Quest source_quest = ((QuestButtonAccessor) (Object) source).quest_enhance$get_quest();
+        Quest source_quest = ((QuestButtonAccessor) (Object) source_button).quest_enhance$get_quest();
         Quest dependency_quest = ((QuestButtonAccessor) (Object) dependency).quest_enhance$get_quest();
         HiddenDependencyLines.Line line = HiddenDependencyLines
                 .find(chapter, source_quest.getMovableID(), dependency_quest.getMovableID())
                 .orElse(null);
         if (line == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
-                    source, dependency, pose, half_width, red, green, blue,
-                    start_alpha, end_alpha, texture_offset, tesselator
+                    graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset
             );
             return;
         }
@@ -138,16 +145,16 @@ public abstract class QuestPanelMixin {
                 && !this.questScreen.isViewingQuest();
         if (editing) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
-                    source, dependency, pose, half_width,
+                    graphics, dependency_line_texture, source, dependency, pose, half_width,
                     quest_enhance$HIDDEN_LINE_RED,
                     quest_enhance$HIDDEN_LINE_GREEN,
                     quest_enhance$HIDDEN_LINE_BLUE,
-                    start_alpha, end_alpha, texture_offset, tesselator
+                    start_alpha, end_alpha, texture_offset
             );
         } else if (line.reveal_on_hover() && (source.isMouseOver() || dependency.isMouseOver())) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
-                    source, dependency, pose, half_width, red, green, blue,
-                    start_alpha, end_alpha, texture_offset, tesselator
+                    graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset
             );
         }
     }
@@ -246,7 +253,7 @@ public abstract class QuestPanelMixin {
                             this.questScreen.getQuestButtonSize()
                     );
                     if (image != null) {
-                        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
+                        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
                         this.questScreen.refreshQuestPanel();
                     }
             }
@@ -258,7 +265,7 @@ public abstract class QuestPanelMixin {
                 Icons.CAMERA,
                 button -> GifSelectionScreen.open(button.getParent(), null, resource_location -> {
                     ChapterImage image = ChapterCanvasGif.create(chapter, resource_location, x, y);
-                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
+                    Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
                     this.questScreen.refreshQuestPanel();
                 })
         ));
@@ -269,7 +276,7 @@ public abstract class QuestPanelMixin {
                 Icons.MARKER,
                 button -> {
                     ChapterImage anchor = DecorativeAnchor.create(chapter, x, y);
-                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(anchor));
+                    Play2ServerNetworking.send(CreateObjectMessage.create(anchor, null));
                     this.questScreen.refreshQuestPanel();
                 }
         ));
@@ -279,7 +286,7 @@ public abstract class QuestPanelMixin {
                 Component.translatable("quest_enhance.chapter_text"),
                 Icons.CHAT,
                 button -> {
-                    StringConfig config = new StringConfig(Pattern.compile(".+"));
+                    EditableString config = new EditableString(Pattern.compile(".+"));
                     EditStringConfigOverlay<String> overlay = new EditStringConfigOverlay<>(
                             this.questScreen,
                             config,
@@ -294,7 +301,7 @@ public abstract class QuestPanelMixin {
                                             this.questScreen.getQuestButtonSize(),
                                             this.questScreen.getTheme()
                                     );
-                                    NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
+                                    Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
                                 }
                                 this.questScreen.openGui();
                             },
@@ -314,7 +321,7 @@ public abstract class QuestPanelMixin {
                     Icons.CAMERA,
                     button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
                         ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
-                        NetworkManager.sendToServer(CreateObjectMessage.requestCreation(image));
+                        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
                         this.questScreen.refreshQuestPanel();
                     })
             ));
@@ -327,7 +334,7 @@ public abstract class QuestPanelMixin {
     // 在任务按钮绘制前连接任务和辅助点组成的有序折线路径
     @Inject(method = "drawOffsetBackground", at = @At("TAIL"))
     private void quest_enhance$draw_decorative_dependency_line(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -375,9 +382,6 @@ public abstract class QuestPanelMixin {
             }
 
             // 使用与原生依赖线相同的旋转纹理四边形连接相邻节点
-            quest_enhance$DECORATIVE_LINE_TEXTURE.bindTexture();
-            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
             float half_width = 3.0F * this.questScreen.getZoom() / 16.0F;
             Widget center = line_buttons.getFirst();
             for (int index = 1; index < line_buttons.size(); index++) {
@@ -414,7 +418,7 @@ public abstract class QuestPanelMixin {
     // 沿两点方向平铺无箭头纹理，并保留原生依赖线的末端渐暗效果
     @Unique
     private static void quest_enhance$draw_textured_line(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             int start_x,
             int start_y,
             int end_x,
@@ -433,25 +437,28 @@ public abstract class QuestPanelMixin {
         }
 
         // 将水平矩形旋转到两个节点的连线方向
-        graphics.pose().pushPose();
-        graphics.pose().translate(start_x, start_y, 0.0F);
-        graphics.pose().mulPose(Axis.ZP.rotation((float) Math.atan2(delta_y, delta_x)));
-        Matrix4f matrix = graphics.pose().last().pose();
+        Matrix3x2fStack pose_stack = graphics.pose();
+        pose_stack.pushMatrix();
+        pose_stack.translate(start_x, start_y);
+        pose_stack.rotate((float) Math.atan2(delta_y, delta_x));
         float max_u = length / half_width / 2.0F;
-        int end_red = red * 3 / 4;
-        int end_green = green * 3 / 4;
-        int end_blue = blue * 3 / 4;
-
-        // 按当前版本的 POSITION_TEX_COLOR 顶点格式提交纹理矩形
-        BufferBuilder buffer = Tesselator.getInstance().begin(
-                VertexFormat.Mode.QUADS,
-                DefaultVertexFormat.POSITION_TEX_COLOR
+        var texture = Minecraft.getInstance().getTextureManager().getTexture(quest_enhance$DECORATIVE_LINE_TEXTURE.texture);
+        GuiElementRenderState state = new BlitRenderState(
+                RenderPipelines.GUI_TEXTURED,
+                TextureSetup.singleTexture(texture.getTextureView(), texture.getSampler()),
+                new Matrix3x2f(pose_stack),
+                0,
+                (int) -half_width,
+                (int) length,
+                (int) half_width,
+                max_u,
+                0,
+                0,
+                1,
+                ARGB.color(alpha, red, green, blue),
+                graphics.peekScissorStack()
         );
-        buffer.addVertex(matrix, 0.0F, -half_width, 0.0F).setUv(max_u, 0.0F).setColor(red, green, blue, alpha);
-        buffer.addVertex(matrix, 0.0F, half_width, 0.0F).setUv(max_u, 1.0F).setColor(red, green, blue, alpha);
-        buffer.addVertex(matrix, length, half_width, 0.0F).setUv(0.0F, 1.0F).setColor(end_red, end_green, end_blue, alpha);
-        buffer.addVertex(matrix, length, -half_width, 0.0F).setUv(0.0F, 0.0F).setColor(end_red, end_green, end_blue, alpha);
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
-        graphics.pose().popPose();
+        ((GuiGraphicsMixin) graphics).getGuiRenderState().addGuiElement(state);
+        pose_stack.popMatrix();
     }
 }

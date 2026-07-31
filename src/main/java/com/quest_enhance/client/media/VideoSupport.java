@@ -37,7 +37,7 @@ public final class VideoSupport {
     private static void showMessage(Component message) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
-            minecraft.player.displayClientMessage(message, false);
+            minecraft.player.sendSystemMessage(message);
         }
     }
 }

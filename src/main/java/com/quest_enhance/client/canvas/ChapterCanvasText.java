@@ -1,12 +1,13 @@
 package com.quest_enhance.client.canvas;
 
 import com.quest_enhance.mixin.ChapterImageAccessor;
-import dev.ftb.mods.ftblibrary.ui.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -18,7 +19,7 @@ import java.util.Set;
 public final class ChapterCanvasText {
     private static final String LEGACY_PREFIX = "quest_enhance:text:";
     private static final String PREFIX = "quest_enhance:text_v2:";
-    public static final ResourceLocation DEFAULT_FONT = Minecraft.DEFAULT_FONT;
+    public static final Identifier DEFAULT_FONT = Minecraft.DEFAULT_FONT;
 
     private ChapterCanvasText() {
     }
@@ -41,7 +42,7 @@ public final class ChapterCanvasText {
                     return Optional.empty();
                 }
 
-                ResourceLocation font = ResourceLocation.tryParse(value.substring(font_start, font_end));
+                Identifier font = Identifier.tryParse(value.substring(font_start, font_end));
                 return font == null
                         ? Optional.empty()
                         : Optional.of(new TextData(value.substring(font_end), font));
@@ -57,29 +58,29 @@ public final class ChapterCanvasText {
 
     // 修改文字时保留字体，并继续使用 FTB 原生字段保存与同步
     public static void setText(ChapterImage image, String text) {
-        ResourceLocation font = getTextData(image).map(TextData::font).orElse(DEFAULT_FONT);
+        Identifier font = getTextData(image).map(TextData::font).orElse(DEFAULT_FONT);
         setTextData(image, new TextData(text, font));
     }
 
     // 修改字体时保留文字内容
-    public static void setFont(ChapterImage image, ResourceLocation font) {
+    public static void setFont(ChapterImage image, Identifier font) {
         getTextData(image).ifPresent(data -> setTextData(image, new TextData(data.text(), font)));
     }
 
     // 读取当前全部资源包中可供文字组件使用的字体定义
-    public static List<ResourceLocation> getAvailableFonts() {
-        Set<ResourceLocation> fonts = new LinkedHashSet<>();
+    public static List<Identifier> getAvailableFonts() {
+        Set<Identifier> fonts = new LinkedHashSet<>();
         fonts.add(DEFAULT_FONT);
         Minecraft.getInstance().getResourceManager()
                 .listResources("font", location -> location.getPath().endsWith(".json")
                         && !location.getPath().startsWith("font/include/"))
                 .keySet()
                 .stream()
-                .map(location -> ResourceLocation.fromNamespaceAndPath(
+                .map(location -> Identifier.fromNamespaceAndPath(
                         location.getNamespace(),
                         location.getPath().substring("font/".length(), location.getPath().length() - ".json".length())
                 ))
-                .sorted(Comparator.comparing(ResourceLocation::toString))
+                .sorted(Comparator.comparing(Identifier::toString))
                 .forEach(fonts::add);
         return new ArrayList<>(fonts);
     }
@@ -112,10 +113,10 @@ public final class ChapterCanvasText {
         return image;
     }
 
-    public record TextData(String text, ResourceLocation font) {
+    public record TextData(String text, Identifier font) {
         // 创建携带字体样式的文字组件供测量与绘制共同使用
         public Component component() {
-            return Component.literal(this.text).withStyle(style -> style.withFont(this.font));
+            return Component.literal(this.text).withStyle(style -> style.withFont(new FontDescription.Resource(this.font)));
         }
     }
 }

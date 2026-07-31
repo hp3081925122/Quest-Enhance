@@ -83,20 +83,20 @@ public final class HiddenDependencyLines {
     public static void readData(Chapter chapter, CompoundTag tag) {
         List<Line> lines = get(chapter);
         lines.clear();
-        if (!tag.contains(NBT_KEY, Tag.TAG_LIST)) {
+        if (!tag.contains(NBT_KEY)) {
             return;
         }
-        ListTag line_list = tag.getList(NBT_KEY, Tag.TAG_COMPOUND);
+        ListTag line_list = tag.getListOrEmpty(NBT_KEY);
         for (int index = 0; index < line_list.size(); index++) {
-            CompoundTag line_tag = line_list.getCompound(index);
-            if (!line_tag.contains(SOURCE_KEY, Tag.TAG_LONG)
-                    || !line_tag.contains(DEPENDENCY_KEY, Tag.TAG_LONG)) {
+            CompoundTag line_tag = line_list.getCompoundOrEmpty(index);
+            if (line_tag.getLong(SOURCE_KEY).isEmpty()
+                    || line_tag.getLong(DEPENDENCY_KEY).isEmpty()) {
                 continue;
             }
             lines.add(new Line(
-                    line_tag.getLong(SOURCE_KEY),
-                    line_tag.getLong(DEPENDENCY_KEY),
-                    line_tag.getBoolean(REVEAL_ON_HOVER_KEY)
+                    line_tag.getLongOr(SOURCE_KEY, 0L),
+                    line_tag.getLongOr(DEPENDENCY_KEY, 0L),
+                    line_tag.getBooleanOr(REVEAL_ON_HOVER_KEY, false)
             ));
         }
     }

@@ -2,26 +2,27 @@ package com.quest_enhance.mixin;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.clipboard.WindowsClipboardImage;
 import com.quest_enhance.client.description.MultilineTextEditorAccess;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.ftb.mods.ftblibrary.config.ConfigCallback;
-import dev.ftb.mods.ftblibrary.config.ListConfig;
-import dev.ftb.mods.ftblibrary.config.StringConfig;
-import dev.ftb.mods.ftblibrary.ui.MultilineTextBox;
-import dev.ftb.mods.ftblibrary.ui.MultilineTextBox.StringExtents;
-import dev.ftb.mods.ftblibrary.ui.input.Key;
-import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
+import dev.ftb.mods.ftblibrary.client.config.ConfigCallback;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableList;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableString;
+import dev.ftb.mods.ftblibrary.client.gui.widget.MultilineTextBox;
+import dev.ftb.mods.ftblibrary.client.gui.widget.MultilineTextBox.StringExtents;
+import dev.ftb.mods.ftblibrary.client.gui.input.Key;
+import dev.ftb.mods.ftblibrary.client.util.ImageComponent;
 import dev.ftb.mods.ftbquests.client.FTBQuestsClient;
 import dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Whence;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Component.Serializer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.loading.FMLPaths;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -72,7 +73,10 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
     // 把原版文字组件安全写入任务描述，并保留选择内容所在行的前后文字
     @Override
     public void quest_enhance$insert_component(Component component) {
-        String serialized = Serializer.toJson(component, FTBQuestsClient.holderLookup());
+        String serialized = ComponentSerialization.CODEC.encodeStart(
+                FTBQuestsClient.holderLookup().createSerializationContext(JsonOps.INSTANCE),
+                component
+        ).result().map(Object::toString).orElseThrow();
         if (!this.quest_enhance$has_single_line_selection()) {
             this.quest_enhance$insert_at_end_of_line("\n" + serialized);
             return;
@@ -98,17 +102,17 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
         String before = editor_text.substring(line_start, selection.start());
         String after = editor_text.substring(selection.end(), line_end);
         if (!before.isEmpty()) {
-            parts.add(JsonParser.parseString(Serializer.toJson(
-                    Component.literal(before),
-                    FTBQuestsClient.holderLookup()
-            )));
+            parts.add(ComponentSerialization.CODEC.encodeStart(
+                    FTBQuestsClient.holderLookup().createSerializationContext(JsonOps.INSTANCE),
+                    Component.literal(before)
+            ).result().orElseThrow());
         }
         parts.add(JsonParser.parseString(serialized));
         if (!after.isEmpty()) {
-            parts.add(JsonParser.parseString(Serializer.toJson(
-                    Component.literal(after),
-                    FTBQuestsClient.holderLookup()
-            )));
+            parts.add(ComponentSerialization.CODEC.encodeStart(
+                    FTBQuestsClient.holderLookup().createSerializationContext(JsonOps.INSTANCE),
+                    Component.literal(after)
+            ).result().orElseThrow());
         }
 
         // 按 FTB 编辑器的选择替换方式更新整行并恢复焦点
@@ -125,7 +129,7 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
     @Inject(method = "<init>", at = @At("RETURN"))
     private void quest_enhance$receive_description_width(
             Component title,
-            ListConfig<String, StringConfig> config,
+            EditableList<String, EditableString> config,
             ConfigCallback callback,
             CallbackInfo callback_info
     ) {
@@ -189,13 +193,13 @@ public abstract class MultilineTextEditorScreenMixin implements MultilineTextEdi
             }
 
             // 动态注册刚保存的纹理，避免粘贴一次就重载整个资源包
-            ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
+            Identifier resource_location = Identifier.fromNamespaceAndPath(
                     QuestEnhance.MOD_ID,
                     "textures/ftb/" + file_name
             );
             try (InputStream input_stream = Files.newInputStream(output_path)) {
                 NativeImage native_image = NativeImage.read(input_stream);
-                minecraft.getTextureManager().register(resource_location, new DynamicTexture(native_image));
+                minecraft.getTextureManager().register(resource_location, new DynamicTexture(resource_location::toString, native_image));
             }
 
             // 按任务介绍区宽度和原图比例计算图片组件尺寸

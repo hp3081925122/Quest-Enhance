@@ -8,7 +8,7 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.loading.FMLPaths;
 
 import javax.imageio.ImageIO;
@@ -55,13 +55,13 @@ public final class ChapterClipboardImage {
                 throw new IOException("No PNG writer is available");
             }
 
-            ResourceLocation resource_location = ResourceLocation.fromNamespaceAndPath(
+            Identifier resource_location = Identifier.fromNamespaceAndPath(
                     QuestEnhance.MOD_ID,
                     "textures/ftb/" + file_name
             );
             try (InputStream input_stream = Files.newInputStream(output_path)) {
                 NativeImage native_image = NativeImage.read(input_stream);
-                minecraft.getTextureManager().register(resource_location, new DynamicTexture(native_image));
+                minecraft.getTextureManager().register(resource_location, new DynamicTexture(resource_location::toString, native_image));
             }
 
             // 按原图比例换算画布尺寸，并限制最长边以避免截图占满画布

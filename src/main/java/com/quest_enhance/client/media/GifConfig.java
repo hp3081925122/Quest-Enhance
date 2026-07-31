@@ -1,24 +1,24 @@
 package com.quest_enhance.client.media;
 
-import dev.ftb.mods.ftblibrary.config.ConfigCallback;
-import dev.ftb.mods.ftblibrary.config.ConfigValue;
+import dev.ftb.mods.ftblibrary.client.config.ConfigCallback;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableConfigValue;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.Widget;
-import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
+import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
-public final class GifConfig extends ConfigValue<ResourceLocation> {
+public final class GifConfig extends EditableConfigValue<Identifier> {
     @Override
-    public Component getStringForGUI(ResourceLocation value) {
+    public Component getStringForGUI(Identifier value) {
         return value == null
                 ? Component.translatable("quest_enhance.gif.none")
                 : Component.literal(value.toString());
     }
 
     @Override
-    public Icon getIcon(ResourceLocation value) {
+    public Icon getIcon(Identifier value) {
         return Icons.CAMERA;
     }
 
@@ -30,7 +30,7 @@ public final class GifConfig extends ConfigValue<ResourceLocation> {
         }
 
         GifSelectionScreen.open(widget.getParent(), this.getValue(), selected_gif -> {
-            boolean changed = this.setCurrentValue(selected_gif);
+            boolean changed = this.updateValue(selected_gif);
             callback.save(changed);
         });
     }

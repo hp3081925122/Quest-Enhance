@@ -7,34 +7,41 @@ import com.quest_enhance.client.media.VideoSupport;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ItemStackConfig;
-import dev.ftb.mods.ftblibrary.config.NameMap;
-import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
-import dev.ftb.mods.ftblibrary.config.ui.resource.SelectItemStackScreen;
+import com.mojang.serialization.JsonOps;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableItemStack;
+import dev.ftb.mods.ftblibrary.util.NameMap;
+import dev.ftb.mods.ftblibrary.client.config.gui.EditConfigScreen;
+import dev.ftb.mods.ftblibrary.client.config.gui.resource.SelectItemStackScreen;
 import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
-import dev.ftb.mods.ftblibrary.util.client.ImageComponent.ImageAlign;
+import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.util.ImageComponent;
+import dev.ftb.mods.ftblibrary.client.util.ImageComponent.ImageAlign;
 import dev.ftb.mods.ftbquests.client.ClientQuestFile;
 import dev.ftb.mods.ftbquests.client.FTBQuestsClient;
+import dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen;
 import dev.ftb.mods.ftbquests.client.gui.SelectQuestObjectScreen;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.QuestObjectType;
-import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
+import dev.ftb.mods.ftbquests.client.config.EditableQuestObject;
 import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.contents.KeybindContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -182,7 +189,10 @@ public final class DescriptionComponentMenu {
                 return false;
             }
             json = element.getAsJsonObject();
-            component = Component.Serializer.fromJson(raw_text, FTBQuestsClient.holderLookup());
+            component = ComponentSerialization.CODEC.parse(
+                    FTBQuestsClient.holderLookup().createSerializationContext(JsonOps.INSTANCE),
+                    element
+            ).result().orElse(null);
         } catch (RuntimeException exception) {
             return false;
         }
@@ -193,27 +203,33 @@ public final class DescriptionComponentMenu {
         }
 
         // 保存时重新使用当前注册表上下文生成合法的 1.21.1 组件 JSON
-        Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(
-                edited,
-                FTBQuestsClient.holderLookup()
-        ));
+        Consumer<Component> component_save = edited -> ComponentSerialization.CODEC.encodeStart(
+                FTBQuestsClient.holderLookup().createSerializationContext(JsonOps.INSTANCE),
+                edited
+        ).result().ifPresent(serialized -> save.accept(serialized.toString()));
         Style style = component.getStyle();
         ClickEvent click_event = style.getClickEvent();
 
         // 点击事件组件可直接还原动作值和显示文字
         if (click_event != null) {
-            TextAction action = switch (click_event.getAction()) {
-                case OPEN_URL -> TextAction.WEB_LINK;
-                case COPY_TO_CLIPBOARD -> TextAction.COPY;
-                case RUN_COMMAND -> TextAction.COMMAND;
+            TextAction action = switch (click_event) {
+                case ClickEvent.OpenUrl ignored -> TextAction.WEB_LINK;
+                case ClickEvent.CopyToClipboard ignored -> TextAction.COPY;
+                case ClickEvent.RunCommand ignored -> TextAction.COMMAND;
                 default -> null;
             };
             if (action != null) {
+                String action_value = switch (click_event) {
+                    case ClickEvent.OpenUrl open_url -> open_url.uri().toString();
+                    case ClickEvent.CopyToClipboard copy -> copy.value();
+                    case ClickEvent.RunCommand command -> command.command();
+                    default -> "";
+                };
                 openTextComponentConfig(
                         parent,
                         action,
                         component.getString(),
-                        click_event.getValue(),
+                        action_value,
                         ChapterCanvasText.DEFAULT_FONT,
                         component_save
                 );
@@ -221,20 +237,17 @@ public final class DescriptionComponentMenu {
             }
 
             // 指定页跳转只接管带合法页码的任务链接，普通 FTB 任务链接保持原行为
-            if (click_event.getAction() == ClickEvent.Action.CHANGE_PAGE) {
-                String[] fields = click_event.getValue().split("/", 2);
-                if (fields.length == 2) {
-                    try {
-                        int page = Integer.parseInt(fields[1]);
-                        Quest quest = QuestObjectBase.parseHexId(fields[0])
-                                .map(ClientQuestFile.INSTANCE::getQuest)
-                                .orElse(null);
-                        if (quest != null && page >= 1) {
-                            openQuestPageConfig(parent, quest, component.getString(), page, component_save);
-                            return true;
-                        }
-                    } catch (NumberFormatException exception) {
-                        return false;
+            if (click_event instanceof ClickEvent.Custom custom
+                    && custom.id().equals(MultilineTextEditorScreen.QUEST_LINK_ACTION)) {
+                CompoundTag payload = custom.payload().flatMap(tag -> tag.asCompound()).orElse(null);
+                if (payload != null) {
+                    Quest quest = QuestObjectBase.parseHexId(payload.getStringOr("quest_id", "0"))
+                            .map(ClientQuestFile.getInstance()::getQuest)
+                            .orElse(null);
+                    int page = payload.getIntOr("page", 1);
+                    if (quest != null && page >= 1) {
+                        openQuestPageConfig(parent, quest, component.getString(), page, component_save);
+                        return true;
                     }
                 }
             }
@@ -244,22 +257,20 @@ public final class DescriptionComponentMenu {
         // 悬停事件分别恢复文字内容或完整物品堆栈
         HoverEvent hover_event = style.getHoverEvent();
         if (hover_event != null) {
-            Component hover_text = hover_event.getValue(HoverEvent.Action.SHOW_TEXT);
-            if (hover_text != null) {
+            if (hover_event instanceof HoverEvent.ShowText show_text) {
                 openTextComponentConfig(
                         parent,
                         TextAction.HOVER_TEXT,
                         component.getString(),
-                        hover_text.getString(),
+                        show_text.value().getString(),
                         ChapterCanvasText.DEFAULT_FONT,
                         component_save
                 );
                 return true;
             }
 
-            HoverEvent.ItemStackInfo item_info = hover_event.getValue(HoverEvent.Action.SHOW_ITEM);
-            if (item_info != null) {
-                openItemHoverConfig(parent, item_info.getItemStack(), component.getString(), component_save);
+            if (hover_event instanceof HoverEvent.ShowItem show_item) {
+                openItemHoverConfig(parent, show_item.item().create(), component.getString(), component_save);
                 return true;
             }
             return false;
@@ -296,7 +307,9 @@ public final class DescriptionComponentMenu {
                     TextAction.FONT,
                     component.getString(),
                     "",
-                    style.getFont(),
+                    style.getFont() instanceof FontDescription.Resource resource
+                            ? resource.id()
+                            : ChapterCanvasText.DEFAULT_FONT,
                     component_save
             );
             return true;
@@ -350,39 +363,33 @@ public final class DescriptionComponentMenu {
             TextAction action,
             String initial_display_text,
             String initial_action_value,
-            ResourceLocation initial_font,
+            Identifier initial_font,
             Consumer<Component> save
     ) {
         String[] display_text = {initial_display_text};
         String[] action_value = {initial_action_value};
-        ResourceLocation[] font = {initial_font};
+        Identifier[] font = {initial_font};
 
         // 确认配置后按动作类型构造点击、悬停或样式组件
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 Component component = switch (action) {
                     case WEB_LINK -> Component.literal(display_text[0]).withStyle(Style.EMPTY
                             .withColor(ChatFormatting.AQUA)
                             .withUnderlined(true)
-                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, action_value[0])));
+                            .withClickEvent(new ClickEvent.OpenUrl(URI.create(action_value[0]))));
                     case HOVER_TEXT -> Component.literal(display_text[0]).withStyle(Style.EMPTY
-                            .withHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT,
-                                    Component.literal(action_value[0])
-                            )));
+                            .withHoverEvent(new HoverEvent.ShowText(Component.literal(action_value[0]))));
                     case COPY -> Component.literal(display_text[0]).withStyle(Style.EMPTY
                             .withColor(ChatFormatting.AQUA)
                             .withUnderlined(true)
-                            .withClickEvent(new ClickEvent(
-                                    ClickEvent.Action.COPY_TO_CLIPBOARD,
-                                    action_value[0]
-                            )));
-                    case FONT -> Component.literal(display_text[0]).withStyle(style -> style.withFont(font[0]));
+                            .withClickEvent(new ClickEvent.CopyToClipboard(action_value[0])));
+                    case FONT -> Component.literal(display_text[0]).withStyle(style -> style.withFont(new FontDescription.Resource(font[0])));
                     case TRANSLATION -> Component.translatableWithFallback(action_value[0], display_text[0]);
                     case COMMAND -> Component.literal(display_text[0]).withStyle(Style.EMPTY
                             .withColor(ChatFormatting.GOLD)
                             .withUnderlined(true)
-                            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, action_value[0])));
+                            .withClickEvent(new ClickEvent.RunCommand(action_value[0])));
                     case KEYBIND -> Component.keybind(action_value[0]);
                     case OBFUSCATED -> Component.literal(display_text[0]).withStyle(ChatFormatting.OBFUSCATED);
                 };
@@ -427,11 +434,11 @@ public final class DescriptionComponentMenu {
             ).setNameKey("quest_enhance.description_component.copy_value");
             case FONT -> {
                 // 字体列表直接复用章节画布已经验证的资源包扫描结果
-                List<ResourceLocation> fonts = new ArrayList<>(ChapterCanvasText.getAvailableFonts());
+                List<Identifier> fonts = new ArrayList<>(ChapterCanvasText.getAvailableFonts());
                 if (!fonts.contains(font[0])) {
                     fonts.add(font[0]);
                 }
-                NameMap<ResourceLocation> font_map = NameMap.of(font[0], fonts)
+                NameMap<Identifier> font_map = NameMap.of(font[0], fonts)
                         .name(value -> Component.literal(value.toString()))
                         .create();
                 group.addEnum(
@@ -478,7 +485,7 @@ public final class DescriptionComponentMenu {
 
     // 先使用 FTB 原生任务选择器选择目标任务
     private static void selectQuestPage(Panel parent, MultilineTextEditorAccess editor) {
-        ConfigQuestObject<Quest> quest_config = new ConfigQuestObject<>(QuestObjectType.QUEST);
+        EditableQuestObject<Quest> quest_config = new EditableQuestObject<>(QuestObjectType.QUEST);
         new SelectQuestObjectScreen<>(quest_config, accepted -> {
             Quest quest = quest_config.getValue();
             if (accepted && quest != null) {
@@ -509,14 +516,17 @@ public final class DescriptionComponentMenu {
         int[] page = {Math.max(1, Math.min(initial_page, page_count))};
 
         // 确认后生成 FTB 已支持的任务 ID 与页码点击值
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
+                CompoundTag payload = new CompoundTag();
+                payload.putString("quest_id", quest.getCodeString());
+                payload.putInt("page", page[0]);
                 Component component = Component.literal(display_text[0]).withStyle(Style.EMPTY
                         .withColor(ChatFormatting.AQUA)
                         .withUnderlined(true)
-                        .withClickEvent(new ClickEvent(
-                                ClickEvent.Action.CHANGE_PAGE,
-                                quest.getCodeString() + "/" + page[0]
+                        .withClickEvent(new ClickEvent.Custom(
+                                MultilineTextEditorScreen.QUEST_LINK_ACTION,
+                                Optional.of(payload)
                         )));
                 save.accept(component);
             }
@@ -547,7 +557,7 @@ public final class DescriptionComponentMenu {
             MultilineTextEditorAccess editor,
             boolean hover
     ) {
-        ItemStackConfig item_config = new ItemStackConfig(1L);
+        EditableItemStack item_config = new EditableItemStack(1L);
         new SelectItemStackScreen(item_config, accepted -> {
             if (accepted && !item_config.getValue().isEmpty()) {
                 if (hover) {
@@ -568,7 +578,7 @@ public final class DescriptionComponentMenu {
             ItemStack selected_stack
     ) {
         // 图标保留完整 Data Components、耐久和数量
-        String item_icon = ItemIcon.getItemIcon(selected_stack.copy()).toString();
+        String item_icon = ItemIcon.ofItemStack(selected_stack.copy()).toString();
         openItemIconConfig(
                 parent,
                 item_icon,
@@ -618,7 +628,7 @@ public final class DescriptionComponentMenu {
         String[] hover_text = {initial_hover_text};
 
         // 物品图标沿用 FTB 原生序列化格式保存完整 Data Components
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 save.accept(imageMarkup(
                         item_icon,
@@ -665,13 +675,10 @@ public final class DescriptionComponentMenu {
         String[] display_text = {initial_display_text};
 
         // 物品悬停保留所选物品的 Data Components 供 tooltip 展示
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 Component component = Component.literal(display_text[0]).withStyle(Style.EMPTY.withHoverEvent(
-                        new HoverEvent(
-                                HoverEvent.Action.SHOW_ITEM,
-                                new HoverEvent.ItemStackInfo(selected_stack.copy())
-                        )
+                        new HoverEvent.ShowItem(ItemStackTemplate.fromNonEmptyStack(selected_stack.copy()))
                 ));
                 save.accept(component);
             }
@@ -744,7 +751,7 @@ public final class DescriptionComponentMenu {
         String[] hover_text = {initial_hover_text};
 
         // 网络图片继续使用 FTB 原生图片标记，不增加新的保存格式
-        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 save.accept(imageMarkup(
                         url[0],
@@ -770,7 +777,7 @@ public final class DescriptionComponentMenu {
 
     // 向物品与网络图片配置页加入相同的尺寸和显示字段
     private static void addImageFields(
-            ConfigGroup group,
+            EditableConfigGroup group,
             int[] width,
             int[] height,
             ImageAlign[] align,

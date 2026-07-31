@@ -116,20 +116,20 @@ public final class DecorativeDependencyLines {
     public static void readData(Chapter chapter, CompoundTag tag) {
         List<Line> lines = get(chapter);
         lines.clear();
-        if (!tag.contains(NBT_KEY, Tag.TAG_LIST)) {
+        if (!tag.contains(NBT_KEY)) {
             return;
         }
-        ListTag line_list = tag.getList(NBT_KEY, Tag.TAG_COMPOUND);
+        ListTag line_list = tag.getListOrEmpty(NBT_KEY);
         for (int index = 0; index < line_list.size(); index++) {
-            CompoundTag line_tag = line_list.getCompound(index);
+            CompoundTag line_tag = line_list.getCompoundOrEmpty(index);
             List<String> nodes = new ArrayList<>();
-            if (line_tag.contains(NODES_KEY, Tag.TAG_LIST)) {
-                ListTag node_list = line_tag.getList(NODES_KEY, Tag.TAG_STRING);
+            if (line_tag.getList(NODES_KEY).isPresent()) {
+                ListTag node_list = line_tag.getListOrEmpty(NODES_KEY);
                 for (int node_index = 0; node_index < node_list.size(); node_index++) {
-                    nodes.add(node_list.getString(node_index));
+                    nodes.add(node_list.getStringOr(node_index, ""));
                 }
-            } else if (line_tag.contains(NODES_KEY, Tag.TAG_LONG_ARRAY)) {
-                for (long node : line_tag.getLongArray(NODES_KEY)) {
+            } else if (line_tag.getLongArray(NODES_KEY).isPresent()) {
+                for (long node : line_tag.getLongArray(NODES_KEY).orElseThrow()) {
                     nodes.add(questNode(node));
                 }
             }

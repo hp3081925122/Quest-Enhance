@@ -3,13 +3,13 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.ftb.mods.ftblibrary.config.ConfigGroup;
-import dev.ftb.mods.ftblibrary.config.ConfigValue;
-import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
-import dev.ftb.mods.ftblibrary.config.IntConfig;
-import dev.ftb.mods.ftblibrary.config.ui.resource.SelectableResource;
+import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableConfigValue;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableImageResource;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableInt;
+import dev.ftb.mods.ftblibrary.client.config.gui.resource.SelectableResource;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,12 +19,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.io.IOException;
 import java.io.InputStream;
 
-@Mixin(value = ImageResourceConfig.class, remap = false)
+@Mixin(value = EditableImageResource.class, remap = false)
 public abstract class ImageResourceConfigMixin {
     // 在 FTB Quests 原生选择器选中图片后同步更新同组宽高配置
     @Inject(method = "setResource", at = @At("RETURN"))
     private void quest_enhance$apply_native_image_size(
-            SelectableResource<ResourceLocation> selected_resource,
+            SelectableResource<Identifier> selected_resource,
             CallbackInfoReturnable<Boolean> callback_info
     ) {
         if (!callback_info.getReturnValue()) {
@@ -32,19 +32,19 @@ public abstract class ImageResourceConfigMixin {
         }
 
         // 只处理带有图片、宽度、高度和自适应字段的 FTB Quests 图片配置组
-        ImageResourceConfig image_config = (ImageResourceConfig) (Object) this;
-        ConfigGroup group = image_config.getGroup();
+        EditableImageResource image_config = (EditableImageResource) (Object) this;
+        EditableConfigGroup group = image_config.getGroup();
         if (group == null || !"image".equals(image_config.id) || !group.getId().startsWith("ftbquests")) {
             return;
         }
 
-        IntConfig width_config = null;
-        IntConfig height_config = null;
+        EditableInt width_config = null;
+        EditableInt height_config = null;
         boolean has_fit_config = false;
-        for (ConfigValue<?> value : group.getValues()) {
-            if (value instanceof IntConfig int_config && "width".equals(value.id)) {
+        for (EditableConfigValue<?> value : group.getValues()) {
+            if (value instanceof EditableInt int_config && "width".equals(value.id)) {
                 width_config = int_config;
-            } else if (value instanceof IntConfig int_config && "height".equals(value.id)) {
+            } else if (value instanceof EditableInt int_config && "height".equals(value.id)) {
                 height_config = int_config;
             } else if ("fit".equals(value.id)) {
                 has_fit_config = true;
@@ -57,7 +57,7 @@ public abstract class ImageResourceConfigMixin {
         }
 
         // 从当前客户端资源包读取图片原始尺寸并更新配置界面中的数值
-        ResourceLocation image_location = selected_resource.resource();
+        Identifier image_location = selected_resource.resource();
         try {
             Resource resource = Minecraft.getInstance()
                     .getResourceManager()

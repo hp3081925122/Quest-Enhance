@@ -4,7 +4,7 @@ import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.DecorativeDependencyLines;
 import com.quest_enhance.mixin.QuestScreenAccessor;
 import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;

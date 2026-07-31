@@ -1,8 +1,8 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.description.QuestDescriptionTable;
-import dev.ftb.mods.ftblibrary.ui.TextField;
-import dev.ftb.mods.ftblibrary.ui.Theme;
+import dev.ftb.mods.ftblibrary.client.gui.widget.TextField;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

@@ -4,16 +4,20 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.ftb.mods.ftblibrary.config.NameMap;
+import com.quest_enhance.QuestEnhance;
+import dev.ftb.mods.ftblibrary.client.icon.IconHelper;
+import dev.ftb.mods.ftblibrary.util.NameMap;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
-import dev.ftb.mods.ftblibrary.ui.Panel;
-import dev.ftb.mods.ftblibrary.ui.Theme;
-import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
+import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
+import dev.ftb.mods.ftblibrary.client.util.ClientTextComponentUtils;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.nio.charset.StandardCharsets;
@@ -26,6 +30,7 @@ import java.util.function.Consumer;
 
 public final class QuestDescriptionTable {
     public static final String CLICK_PREFIX = "quest_enhance_table/";
+    public static final Identifier CLICK_ACTION = Identifier.fromNamespaceAndPath(QuestEnhance.MOD_ID, "description_table");
     private static final String PROPERTY = "quest_enhance_table";
     static final int MAX_COLUMNS = 8;
     static final int MAX_ROWS = 16;
@@ -107,11 +112,10 @@ public final class QuestDescriptionTable {
             return Optional.empty();
         }
         ClickEvent click_event = component.getStyle().getClickEvent();
-        if (click_event.getAction() != ClickEvent.Action.CHANGE_PAGE
-                || !click_event.getValue().startsWith(CLICK_PREFIX)) {
+        if (!(click_event instanceof ClickEvent.Custom custom) || !custom.id().equals(CLICK_ACTION)) {
             return Optional.empty();
         }
-        return decode(click_event.getValue().substring(CLICK_PREFIX.length()));
+        return custom.payload().flatMap(tag -> tag.asString()).flatMap(QuestDescriptionTable::decode);
     }
 
     // 根据表格宽度计算每一行自动换行后的实际高度
@@ -146,7 +150,7 @@ public final class QuestDescriptionTable {
 
     // 根据表格数据绘制背景、网格线和自动换行后的单元格文字
     public static void draw(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
@@ -159,7 +163,7 @@ public final class QuestDescriptionTable {
         for (int row = 0; row < data.rows().size(); row++) {
             int row_height = layout.rowHeights().get(row);
             Color4I background = data.header() && row == 0 ? data.headerColor() : data.cellColor();
-            background.draw(graphics, x, row_y, table_width, row_height);
+            IconHelper.renderIcon(background, graphics, x, row_y, table_width, row_height);
             for (int column = 0; column < data.columns(); column++) {
                 int left = x + column * table_width / data.columns();
                 int right = x + (column + 1) * table_width / data.columns();
@@ -193,18 +197,18 @@ public final class QuestDescriptionTable {
         // 最后绘制外框和内部横竖分隔线
         int height = layout.height();
         int line_width = data.lineWidth();
-        data.borderColor().draw(graphics, x, y, table_width, line_width);
-        data.borderColor().draw(graphics, x, y + height - line_width, table_width, line_width);
-        data.borderColor().draw(graphics, x, y, line_width, height);
-        data.borderColor().draw(graphics, x + table_width - line_width, y, line_width, height);
+        IconHelper.renderIcon(data.borderColor(), graphics, x, y, table_width, line_width);
+        IconHelper.renderIcon(data.borderColor(), graphics, x, y + height - line_width, table_width, line_width);
+        IconHelper.renderIcon(data.borderColor(), graphics, x, y, line_width, height);
+        IconHelper.renderIcon(data.borderColor(), graphics, x + table_width - line_width, y, line_width, height);
         int line_y = y;
         for (int row = 1; row < data.rows().size(); row++) {
             line_y += layout.rowHeights().get(row - 1);
-            data.borderColor().draw(graphics, x, line_y, table_width, line_width);
+            IconHelper.renderIcon(data.borderColor(), graphics, x, line_y, table_width, line_width);
         }
         for (int column = 1; column < data.columns(); column++) {
             int line_x = x + column * table_width / data.columns();
-            data.borderColor().draw(graphics, line_x, y, line_width, height);
+            IconHelper.renderIcon(data.borderColor(), graphics, line_x, y, line_width, height);
         }
     }
 
@@ -226,9 +230,9 @@ public final class QuestDescriptionTable {
             }
             fallback.append(String.join(" | ", data.rows().get(row)));
         }
-        return Component.literal(fallback.toString()).withStyle(Style.EMPTY.withClickEvent(new ClickEvent(
-                ClickEvent.Action.CHANGE_PAGE,
-                CLICK_PREFIX + encoded
+        return Component.literal(fallback.toString()).withStyle(Style.EMPTY.withClickEvent(new ClickEvent.Custom(
+                CLICK_ACTION,
+                Optional.of(StringTag.valueOf(encoded))
         )));
     }
 
