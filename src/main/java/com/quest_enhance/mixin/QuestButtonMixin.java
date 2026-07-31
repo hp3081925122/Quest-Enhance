@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.canvas.DecorativeLineMenus;
+import com.quest_enhance.client.canvas.HiddenDependencyLineMenus;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
@@ -32,6 +33,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.Collection;
 import java.util.List;
 
 @Mixin(value = QuestButton.class, remap = false)
@@ -116,7 +118,7 @@ public abstract class QuestButtonMixin {
         }
     }
 
-    // 在任务或辅助点组成的批量操作菜单中加入装饰线操作
+    // 在任务或辅助点组成的批量操作菜单中加入装饰线与前置线操作
     @ModifyArg(
             method = "onClicked",
             at = @At(
@@ -131,7 +133,24 @@ public abstract class QuestButtonMixin {
         Movable clicked_object = (Object) this instanceof QuestLinkButton
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
-        return DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
+        DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
+        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, this.quest);
+    }
+
+    // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
+    @ModifyArg(
+            method = "onClicked",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;insertAtTop(Ljava/util/Collection;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
+            ),
+            index = 0
+    )
+    private Collection<ContextMenuItem> quest_enhance$add_dependency_line_to_standard_menu(
+            Collection<ContextMenuItem> context_menu
+    ) {
+        List<ContextMenuItem> appended_menu = new java.util.ArrayList<>(context_menu);
+        return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, this.quest);
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型

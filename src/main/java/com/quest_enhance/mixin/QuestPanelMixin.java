@@ -3,6 +3,7 @@ package com.quest_enhance.mixin;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quest_enhance.DecorativeAnchor;
@@ -15,6 +16,7 @@ import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.TaskTypeSelectionScreen;
 import com.quest_enhance.DecorativeDependencyLines;
+import com.quest_enhance.HiddenDependencyLines;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icon;
@@ -24,6 +26,7 @@ import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.Widget;
+import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
@@ -46,6 +49,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
@@ -59,6 +63,15 @@ import java.util.regex.Pattern;
 @Mixin(value = QuestPanel.class, remap = false)
 public abstract class QuestPanelMixin {
     @Unique
+    private static final int quest_enhance$HIDDEN_LINE_RED = 196;
+
+    @Unique
+    private static final int quest_enhance$HIDDEN_LINE_GREEN = 98;
+
+    @Unique
+    private static final int quest_enhance$HIDDEN_LINE_BLUE = 255;
+
+    @Unique
     private static final ImageIcon quest_enhance$DECORATIVE_LINE_TEXTURE =
             (ImageIcon) Icon.getIcon("quest_enhance:textures/gui/decorative_line.png");
 
@@ -71,6 +84,77 @@ public abstract class QuestPanelMixin {
 
     @Shadow
     protected double questY;
+
+    // 按单条前置线设置隐藏、悬停显示或编辑模式专用颜色
+    @Redirect(
+            method = "drawOffsetBackground",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestPanel;renderConnection(Ldev/ftb/mods/ftblibrary/ui/Widget;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/BufferBuilder;FIIIIIFLcom/mojang/blaze3d/vertex/Tesselator;)V"
+            )
+    )
+    private void quest_enhance$render_hidden_dependency_line(
+            QuestPanel panel,
+            Widget source_widget,
+            QuestButton dependency,
+            PoseStack pose,
+            BufferBuilder buffer,
+            float half_width,
+            int red,
+            int green,
+            int blue,
+            int start_alpha,
+            int end_alpha,
+            float texture_offset,
+            Tesselator tesselator
+    ) {
+        if (!(source_widget instanceof QuestButton source)) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    source_widget, dependency, pose, buffer, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset, tesselator
+            );
+            return;
+        }
+
+        Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
+        if (chapter == null) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    source_widget, dependency, pose, buffer, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset, tesselator
+            );
+            return;
+        }
+
+        Quest source_quest = ((QuestButtonAccessor) (Object) source).quest_enhance$get_quest();
+        Quest dependency_quest = ((QuestButtonAccessor) (Object) dependency).quest_enhance$get_quest();
+        HiddenDependencyLines.Line line = HiddenDependencyLines
+                .find(chapter, source_quest.getMovableID(), dependency_quest.getMovableID())
+                .orElse(null);
+        if (line == null) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    source_widget, dependency, pose, buffer, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset, tesselator
+            );
+            return;
+        }
+
+        boolean editing = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_file().canEdit()
+                && !this.questScreen.isViewingQuest();
+        if (editing) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    source_widget, dependency, pose, buffer, half_width,
+                    quest_enhance$HIDDEN_LINE_RED,
+                    quest_enhance$HIDDEN_LINE_GREEN,
+                    quest_enhance$HIDDEN_LINE_BLUE,
+                    start_alpha, end_alpha, texture_offset, tesselator
+            );
+        } else if (line.reveal_on_hover() && (source.isMouseOver() || dependency.isMouseOver())) {
+            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
+                    source_widget, dependency, pose, buffer, half_width, red, green, blue,
+                    start_alpha, end_alpha, texture_offset, tesselator
+            );
+        }
+    }
 
     // 在章节节点画布的空白处右键菜单中加入辅助点、文字和视频入口
     @ModifyArg(
