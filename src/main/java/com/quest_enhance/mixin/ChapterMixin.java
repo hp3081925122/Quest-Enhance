@@ -8,8 +8,8 @@ import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import de.marhali.json5.Json5Object;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +20,7 @@ public abstract class ChapterMixin {
     // 将装饰线写入章节存档
     @Inject(method = "writeData", at = @At("RETURN"))
     private void quest_enhance$write_decorative_lines(
-            CompoundTag tag,
+            Json5Object tag,
             HolderLookup.Provider provider,
             CallbackInfo callback_info
     ) {
@@ -31,7 +31,7 @@ public abstract class ChapterMixin {
     // 从章节存档恢复装饰线
     @Inject(method = "readData", at = @At("TAIL"))
     private void quest_enhance$read_decorative_lines(
-            CompoundTag tag,
+            Json5Object tag,
             HolderLookup.Provider provider,
             CallbackInfo callback_info
     ) {

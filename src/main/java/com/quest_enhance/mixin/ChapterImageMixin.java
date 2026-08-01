@@ -69,7 +69,7 @@ public abstract class ChapterImageMixin {
     private int order;
 
     // 为画布文字、视频和辅助点提供专用属性页，隐藏无意义的图片和点击字段
-    @Inject(method = "fillEditableConfigGroup", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "fillConfigGroup", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$fill_special_config(EditableConfigGroup config, CallbackInfo callback_info) {
         ChapterImage image = (ChapterImage) (Object) this;
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(image);

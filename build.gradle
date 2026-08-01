@@ -39,6 +39,12 @@ neoForge {
         }
 
         configureEach {
+            programArgument '--fml.neoForgeVersion'
+            programArgument project.neo_version
+            programArgument '--fml.mcVersion'
+            programArgument project.minecraft_version
+            programArgument '--fml.neoFormVersion'
+            programArgument '26.1.2-1'
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
         }
@@ -81,6 +87,9 @@ dependencies {
         transitive = false
     }
     localRuntime("maven.modrinth:watermedia:${watermedia_version}") {
+        transitive = false
+    }
+    localRuntime("maven.modrinth:watermedia-binaries:${watermedia_binaries_version}") {
         transitive = false
     }
 }

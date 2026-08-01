@@ -4,7 +4,6 @@ import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.clipboard.ChapterClipboardImage;
 import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.mojang.datafixers.util.Pair;
-import dev.architectury.networking.NetworkManager;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.platform.network.Play2ServerNetworking;
 import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
@@ -152,8 +151,15 @@ public abstract class QuestScreenMixin {
         for (QuestEnhanceClipboardEntry entry : quest_enhance$multi_clipboard) {
             double x = target.getFirst() + entry.offset_x();
             double y = target.getSecond() + entry.offset_y();
+            QuestEnhance.LOGGER.debug(
+                    "Sending multi-copy entry: type={}, source={}, targetX={}, targetY={}",
+                    entry.object().getClass().getSimpleName(),
+                    entry.object().getMovableID(),
+                    x,
+                    y
+            );
             if (entry.object() instanceof Quest quest) {
-                NetworkManager.sendToServer(new CopyQuestMessage(
+                Play2ServerNetworking.send(new CopyQuestMessage(
                         quest.getId(),
                         target_chapter.getId(),
                         x,
@@ -161,7 +167,7 @@ public abstract class QuestScreenMixin {
                         copy_dependencies
                 ));
             } else if (entry.object() instanceof ChapterImage image) {
-                NetworkManager.sendToServer(new CopyChapterImageMessage(image.getId(), target_chapter.getId(), x, y));
+                Play2ServerNetworking.send(new CopyChapterImageMessage(image.getId(), target_chapter.getId(), x, y));
             }
         }
         callback_info.setReturnValue(true);

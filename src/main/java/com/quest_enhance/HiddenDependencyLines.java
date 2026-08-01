@@ -1,9 +1,10 @@
 package com.quest_enhance;
 
+import de.marhali.json5.Json5Array;
+import de.marhali.json5.Json5Element;
+import de.marhali.json5.Json5Object;
+import de.marhali.json5.Json5Primitive;
 import dev.ftb.mods.ftbquests.quest.Chapter;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
@@ -67,36 +68,55 @@ public final class HiddenDependencyLines {
     }
 
     // 将隐藏前置线写入章节存档数据
-    public static void writeData(Chapter chapter, CompoundTag tag) {
-        ListTag line_list = new ListTag();
+    public static void writeData(Chapter chapter, Json5Object tag) {
+        Json5Array line_list = new Json5Array();
         for (Line line : get(chapter)) {
-            CompoundTag line_tag = new CompoundTag();
-            line_tag.putLong(SOURCE_KEY, line.source_id());
-            line_tag.putLong(DEPENDENCY_KEY, line.dependency_id());
-            line_tag.putBoolean(REVEAL_ON_HOVER_KEY, line.reveal_on_hover());
+            Json5Object line_tag = new Json5Object();
+            line_tag.addProperty(SOURCE_KEY, line.source_id());
+            line_tag.addProperty(DEPENDENCY_KEY, line.dependency_id());
+            line_tag.addProperty(REVEAL_ON_HOVER_KEY, line.reveal_on_hover());
             line_list.add(line_tag);
         }
-        tag.put(NBT_KEY, line_list);
+        tag.add(NBT_KEY, line_list);
     }
 
     // 从章节存档数据恢复隐藏前置线
-    public static void readData(Chapter chapter, CompoundTag tag) {
+    public static void readData(Chapter chapter, Json5Object tag) {
         List<Line> lines = get(chapter);
         lines.clear();
-        if (!tag.contains(NBT_KEY)) {
+        if (!tag.has(NBT_KEY)) {
             return;
         }
-        ListTag line_list = tag.getListOrEmpty(NBT_KEY);
-        for (int index = 0; index < line_list.size(); index++) {
-            CompoundTag line_tag = line_list.getCompoundOrEmpty(index);
-            if (line_tag.getLong(SOURCE_KEY).isEmpty()
-                    || line_tag.getLong(DEPENDENCY_KEY).isEmpty()) {
+        Json5Element raw_line_list = tag.get(NBT_KEY);
+        if (raw_line_list == null || !raw_line_list.isJson5Array()) {
+            return;
+        }
+        Json5Array line_list = raw_line_list.getAsJson5Array();
+        for (Json5Element raw_line : line_list) {
+            if (!raw_line.isJson5Object()) {
                 continue;
             }
+            Json5Object line_tag = raw_line.getAsJson5Object();
+            Json5Element raw_source = line_tag.get(SOURCE_KEY);
+            Json5Element raw_dependency = line_tag.get(DEPENDENCY_KEY);
+            if (raw_source == null || raw_dependency == null
+                    || !raw_source.isJson5Primitive() || !raw_dependency.isJson5Primitive()) {
+                continue;
+            }
+            Json5Primitive source = raw_source.getAsJson5Primitive();
+            Json5Primitive dependency = raw_dependency.getAsJson5Primitive();
+            if (!source.isNumber() || !dependency.isNumber()) {
+                continue;
+            }
+            Json5Element raw_reveal = line_tag.get(REVEAL_ON_HOVER_KEY);
+            boolean reveal_on_hover = raw_reveal != null
+                    && raw_reveal.isJson5Primitive()
+                    && raw_reveal.getAsJson5Primitive().isBoolean()
+                    && raw_reveal.getAsBoolean();
             lines.add(new Line(
-                    line_tag.getLongOr(SOURCE_KEY, 0L),
-                    line_tag.getLongOr(DEPENDENCY_KEY, 0L),
-                    line_tag.getBooleanOr(REVEAL_ON_HOVER_KEY, false)
+                    source.getAsLong(),
+                    dependency.getAsLong(),
+                    reveal_on_hover
             ));
         }
     }

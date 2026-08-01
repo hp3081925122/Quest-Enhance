@@ -214,7 +214,7 @@ public abstract class QuestPanelMixin {
             method = "mousePressed",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/ui/ContextMenu;"
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/client/gui/widget/ContextMenu;"
             ),
             index = 0
     )

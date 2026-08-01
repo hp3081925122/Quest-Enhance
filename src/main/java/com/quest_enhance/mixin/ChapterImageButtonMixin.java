@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.canvas.ChapterCanvasGif;
 import com.quest_enhance.client.canvas.ChapterCanvasText;
 import com.quest_enhance.client.canvas.ChapterCanvasVideo;
@@ -191,6 +192,8 @@ public abstract class ChapterImageButtonMixin {
             boolean selected = screen.quest_enhance$get_file().canEdit()
                     && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
             IconHelper.renderIcon(circle.getShape().withColor(Color4I.DARK_GRAY), graphics, x, y, width, height);
+            // 将背景和轮廓放到形状之后的绘制层，避免深色形状覆盖辅助点的可见状态
+            graphics.nextStratum();
             IconHelper.renderIcon(circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)), graphics, x, y, width, height);
             IconHelper.renderIcon(circle.getOutline().withColor(Color4I.rgb(0x808080)), graphics, x, y, width, height);
             if (selected) {
@@ -315,5 +318,23 @@ public abstract class ChapterImageButtonMixin {
             IconHelper.renderIcon(Color4I.WHITE.withAlpha(selection_alpha), graphics, x, y, width, height);
         }
         callback_info.cancel();
+    }
+
+    // 仅在编辑模式下按住 Ctrl 切换辅助点选择时记录状态，便于排查选中链路
+    @Inject(method = "onClicked", at = @At("TAIL"))
+    private void quest_enhance$log_decorative_anchor_selection(MouseButton button, CallbackInfo callback_info) {
+        if (DecorativeAnchor.isAnchor(this.chapterImage)
+                && button.isLeft()
+                && Minecraft.getInstance().hasControlDown()
+                && ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_file().canEdit()) {
+            boolean selected = ((QuestScreenAccessor) (Object) this.questScreen)
+                    .quest_enhance$get_selected_objects()
+                    .contains(this.chapterImage);
+            QuestEnhance.LOGGER.debug(
+                    "Toggled decorative anchor selection: id={}, selected={}",
+                    this.chapterImage.getId(),
+                    selected
+            );
+        }
     }
 }

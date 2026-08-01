@@ -56,12 +56,12 @@ public abstract class MultilineTextEditorToolbarMixin {
     @Inject(method = "alignWidgets", at = @At("TAIL"))
     private void quest_enhance$align_component_button(CallbackInfo callback_info) {
         if (this.quest_enhance$component_button != null) {
-            this.quest_enhance$component_button.setPosAndSize(213, 1, 16, 16);
+            this.quest_enhance$component_button.setPosAndSize(197, 1, 16, 16);
         }
     }
 
     // 为新增组件按钮向右移动原生撤销按钮
-    @ModifyConstant(method = "alignWidgets", constant = @Constant(intValue = 223))
+    @ModifyConstant(method = "alignWidgets", constant = @Constant(intValue = 207))
     private int quest_enhance$move_undo_button(int original_x) {
         return original_x + 16;
     }

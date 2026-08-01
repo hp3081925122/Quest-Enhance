@@ -28,7 +28,7 @@ import java.util.List;
 @Mixin(value = Quest.class, remap = false)
 public abstract class QuestConfigMixin {
     // 在原生图标配置下方增加可持久化的实体模型选择项
-    @Inject(method = "fillEditableConfigGroup", at = @At("TAIL"))
+    @Inject(method = "fillConfigGroup", at = @At("TAIL"))
     private void quest_enhance$add_entity_model_config(EditableConfigGroup config, CallbackInfo callback_info) {
         Quest quest = (Quest) (Object) this;
         ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();

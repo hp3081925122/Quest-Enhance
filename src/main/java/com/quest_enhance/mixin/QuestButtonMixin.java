@@ -11,11 +11,13 @@ import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
+import dev.ftb.mods.ftbquests.client.gui.ContextMenuBuilder;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestLinkButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -32,7 +34,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Collection;
 import java.util.List;
 
 @Mixin(value = QuestButton.class, remap = false)
@@ -122,7 +123,7 @@ public abstract class QuestButtonMixin {
             method = "onClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftblibrary/ui/BaseScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/ui/ContextMenu;"
+                    target = "Ldev/ftb/mods/ftblibrary/client/gui/widget/BaseScreen;openContextMenu(Ljava/util/List;)Ldev/ftb/mods/ftblibrary/client/gui/widget/ContextMenu;"
             ),
             index = 0
     )
@@ -137,19 +138,25 @@ public abstract class QuestButtonMixin {
     }
 
     // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
-    @ModifyArg(
+    @Redirect(
             method = "onClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;insertAtTop(Ljava/util/Collection;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
-            ),
-            index = 0
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;create(Ldev/ftb/mods/ftbquests/quest/QuestObjectBase;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
+            )
     )
-    private Collection<ContextMenuItem> quest_enhance$add_dependency_line_to_standard_menu(
-            Collection<ContextMenuItem> context_menu
+    private ContextMenuBuilder quest_enhance$add_dependency_line_to_standard_menu(
+            QuestObjectBase object,
+            QuestScreen quest_screen
     ) {
-        List<ContextMenuItem> appended_menu = new java.util.ArrayList<>(context_menu);
-        return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, this.quest);
+        ContextMenuBuilder context_menu = ContextMenuBuilder.create(object, quest_screen);
+        List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
+                new java.util.ArrayList<>(),
+                quest_screen,
+                this.quest
+        );
+        context_menu.insertAtTop(appended_menu);
+        return context_menu;
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
@@ -157,7 +164,7 @@ public abstract class QuestButtonMixin {
             method = "draw",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftblibrary/ui/GuiHelper;setupDrawing()V",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;pose()Lorg/joml/Matrix3x2fStack;",
                     shift = At.Shift.BEFORE
             )
     )

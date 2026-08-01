@@ -1,10 +1,10 @@
 package com.quest_enhance;
 
+import de.marhali.json5.Json5Array;
+import de.marhali.json5.Json5Element;
+import de.marhali.json5.Json5Object;
+import de.marhali.json5.Json5Primitive;
 import dev.ftb.mods.ftbquests.quest.Chapter;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
@@ -98,39 +98,51 @@ public final class DecorativeDependencyLines {
     }
 
     // 将装饰线写入章节存档数据
-    public static void writeData(Chapter chapter, CompoundTag tag) {
-        ListTag line_list = new ListTag();
+    public static void writeData(Chapter chapter, Json5Object tag) {
+        Json5Array line_list = new Json5Array();
         for (Line line : get(chapter)) {
-            CompoundTag line_tag = new CompoundTag();
-            ListTag nodes = new ListTag();
+            Json5Object line_tag = new Json5Object();
+            Json5Array nodes = new Json5Array();
             for (String node : line.nodes()) {
-                nodes.add(StringTag.valueOf(node));
+                nodes.add(node);
             }
-            line_tag.put(NODES_KEY, nodes);
+            line_tag.add(NODES_KEY, nodes);
             line_list.add(line_tag);
         }
-        tag.put(NBT_KEY, line_list);
+        tag.add(NBT_KEY, line_list);
     }
 
     // 从章节存档数据读取装饰线，并迁移旧版任务编号数组
-    public static void readData(Chapter chapter, CompoundTag tag) {
+    public static void readData(Chapter chapter, Json5Object tag) {
         List<Line> lines = get(chapter);
         lines.clear();
-        if (!tag.contains(NBT_KEY)) {
+        if (!tag.has(NBT_KEY)) {
             return;
         }
-        ListTag line_list = tag.getListOrEmpty(NBT_KEY);
-        for (int index = 0; index < line_list.size(); index++) {
-            CompoundTag line_tag = line_list.getCompoundOrEmpty(index);
+        Json5Element raw_line_list = tag.get(NBT_KEY);
+        if (raw_line_list == null || !raw_line_list.isJson5Array()) {
+            return;
+        }
+        Json5Array line_list = raw_line_list.getAsJson5Array();
+        for (Json5Element raw_line : line_list) {
+            if (!raw_line.isJson5Object()) {
+                continue;
+            }
+            Json5Object line_tag = raw_line.getAsJson5Object();
             List<String> nodes = new ArrayList<>();
-            if (line_tag.getList(NODES_KEY).isPresent()) {
-                ListTag node_list = line_tag.getListOrEmpty(NODES_KEY);
-                for (int node_index = 0; node_index < node_list.size(); node_index++) {
-                    nodes.add(node_list.getStringOr(node_index, ""));
+            Json5Element raw_nodes = line_tag.get(NODES_KEY);
+            if (raw_nodes == null || !raw_nodes.isJson5Array()) {
+                continue;
+            }
+            for (Json5Element raw_node : raw_nodes.getAsJson5Array()) {
+                if (!raw_node.isJson5Primitive()) {
+                    continue;
                 }
-            } else if (line_tag.getLongArray(NODES_KEY).isPresent()) {
-                for (long node : line_tag.getLongArray(NODES_KEY).orElseThrow()) {
-                    nodes.add(questNode(node));
+                Json5Primitive node = raw_node.getAsJson5Primitive();
+                if (node.isString()) {
+                    nodes.add(node.getAsString());
+                } else if (node.isNumber()) {
+                    nodes.add(questNode(node.getAsLong()));
                 }
             }
             List<String> normalized = normalize(nodes);
