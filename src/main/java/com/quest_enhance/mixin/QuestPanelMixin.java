@@ -27,6 +27,7 @@ import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.Widget;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
+import dev.ftb.mods.ftbquests.client.gui.quests.QuestLinkButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
@@ -125,10 +126,18 @@ public abstract class QuestPanelMixin {
             return;
         }
 
-        Quest source_quest = ((QuestButtonAccessor) (Object) source).quest_enhance$get_quest();
-        Quest dependency_quest = ((QuestButtonAccessor) (Object) dependency).quest_enhance$get_quest();
+        Movable source_node = source instanceof QuestLinkButton
+                ? ((QuestLinkButtonAccessor) (Object) source).quest_enhance$get_link()
+                : ((QuestButtonAccessor) (Object) source).quest_enhance$get_quest();
+        Movable dependency_node = dependency instanceof QuestLinkButton
+                ? ((QuestLinkButtonAccessor) (Object) dependency).quest_enhance$get_link()
+                : ((QuestButtonAccessor) (Object) dependency).quest_enhance$get_quest();
         HiddenDependencyLines.Line line = HiddenDependencyLines
-                .find(chapter, source_quest.getMovableID(), dependency_quest.getMovableID())
+                .find(
+                        chapter,
+                        HiddenDependencyLines.nodeKey(source_node),
+                        HiddenDependencyLines.nodeKey(dependency_node)
+                )
                 .orElse(null);
         if (line == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(

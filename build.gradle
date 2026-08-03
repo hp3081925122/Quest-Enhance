@@ -78,6 +78,9 @@ dependencies {
     compileOnly("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}") {
         transitive = false
     }
+    compileOnly("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}") {
+        transitive = false
+    }
     runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
     runtimeOnly(fg.deobf("dev.ftb.mods:ftb-library-forge:${ftb_library_version}")) {
         transitive = false

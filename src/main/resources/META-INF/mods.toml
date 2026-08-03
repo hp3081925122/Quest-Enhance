@@ -15,18 +15,18 @@ modId = "forge"
 mandatory = true
 versionRange = "${forge_version_range}"
 ordering = "NONE"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "minecraft"
 mandatory = true
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
-side = "CLIENT"
+side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "ftbquests"
 mandatory = true
 versionRange = "[${ftb_quests_version},)"
 ordering = "AFTER"
-side = "CLIENT"
+side = "BOTH"

@@ -1,2 +1,2 @@
-# 仅在客户端加载，避免专用服务器加载画布点击事件
-com.quest_enhance.kubejs.QuestEnhanceKubeJSPlugin client
+# KubeJS 存在时在客户端和服务端注册 QuestUtils 与事件组
+com.quest_enhance.kubejs.QuestEnhanceKubeJSPlugin
