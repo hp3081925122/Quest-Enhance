@@ -1,20 +1,17 @@
 package com.quest_enhance.client.clipboard;
 
-import com.mojang.blaze3d.platform.NativeImage;
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.media.LocalImageAssets;
 import com.quest_enhance.mixin.ChapterImageAccessor;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.loading.FMLPaths;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -38,9 +35,8 @@ public final class ChapterClipboardImage {
             return null;
         }
 
-        // 将图片持久化到现有剪贴板资源目录，并立即注册动态纹理
+        // 将图片持久化到现有剪贴板资源目录，并注册动态纹理
         try {
-            Minecraft minecraft = Minecraft.getInstance();
             Path output_directory = FMLPaths.CONFIGDIR.get()
                     .resolve(QuestEnhance.MOD_ID)
                     .resolve("assets")
@@ -59,10 +55,7 @@ public final class ChapterClipboardImage {
                     QuestEnhance.MOD_ID,
                     "textures/ftb/" + file_name
             );
-            try (InputStream input_stream = Files.newInputStream(output_path)) {
-                NativeImage native_image = NativeImage.read(input_stream);
-                minecraft.getTextureManager().register(resource_location, new DynamicTexture(native_image));
-            }
+            LocalImageAssets.ensureRegistered(resource_location);
 
             // 按原图比例换算画布尺寸，并限制最长边以避免截图占满画布
             double safe_button_size = Math.max(1.0D, quest_button_size);

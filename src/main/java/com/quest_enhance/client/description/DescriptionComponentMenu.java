@@ -830,6 +830,59 @@ public final class DescriptionComponentMenu {
         );
     }
 
+    // 编辑描述 GIF 时保留动态标记，并允许改选资源和调整图片布局
+    public static void editGif(Panel parent, String raw_text, Consumer<String> save) {
+        QuestDescriptionGif.getData(raw_text).ifPresent(data -> GifSelectionScreen.open(
+                parent,
+                data.resource_location(),
+                resource_location -> openGifConfig(
+                        parent,
+                        new QuestDescriptionGif.GifData(
+                                resource_location,
+                                data.width(),
+                                data.height(),
+                                data.align(),
+                                data.fit(),
+                                data.hover_text()
+                        ),
+                        save
+                )
+        ));
+    }
+
+    // 为任务描述 GIF 提供与普通图片一致的尺寸、对齐、自适应和悬停文字配置
+    private static void openGifConfig(
+            Panel parent,
+            QuestDescriptionGif.GifData initial_data,
+            Consumer<String> save
+    ) {
+        int[] width = {initial_data.width()};
+        int[] height = {initial_data.height()};
+        ImageAlign[] align = {initial_data.align()};
+        boolean[] fit = {initial_data.fit()};
+        String[] hover_text = {initial_data.hover_text()};
+        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+            if (accepted) {
+                save.accept(QuestDescriptionGif.createMarkup(new QuestDescriptionGif.GifData(
+                        initial_data.resource_location(),
+                        width[0],
+                        height[0],
+                        align[0],
+                        fit[0],
+                        hover_text[0]
+                )));
+            }
+            parent.run();
+        }) {
+            @Override
+            public Component getName() {
+                return Component.translatable("quest_enhance.gif.description.add");
+            }
+        };
+        addImageFields(group, width, height, align, fit, hover_text);
+        new EditConfigScreen(group).openGui();
+    }
+
     private enum TextAction {
         WEB_LINK(
                 "quest_enhance.description_component.web_link",

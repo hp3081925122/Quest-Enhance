@@ -11,6 +11,7 @@
   "client": [
     "ChapterImageButtonMixin",
     "ChapterImageMixin",
+    "ImageIconMixin",
     "ImageResourceConfigMixin",
     "KillTaskAccessor",
     "MultilineTextEditorScreenMixin",

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quest Enhance Development"
+  short_description: "Develop Quest Enhance across supported Minecraft branches."
+  default_prompt: "Use $quest-enhance-dev to implement and verify a Quest Enhance change."

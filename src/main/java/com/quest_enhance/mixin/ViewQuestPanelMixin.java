@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.description.DescriptionComponentMenu;
+import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
@@ -77,6 +78,13 @@ public abstract class ViewQuestPanelMixin {
 
         // 物品和网络图片不能交给只支持纹理资源的原生图片编辑器
         if (type instanceof ImageComponent image_component) {
+            // GIF 必须始终通过本模组配置页保存，避免原生编辑器覆写为静态图片标记
+            if (QuestDescriptionGif.getData(raw_text).isPresent()) {
+                DescriptionComponentMenu.editGif(panel, raw_text, save);
+                callback_info.cancel();
+                return;
+            }
+
             String image_id = image_component.imageStr();
             boolean item_icon = image_id.startsWith("item:");
             boolean remote_image = image_id.startsWith("http://") || image_id.startsWith("https://");

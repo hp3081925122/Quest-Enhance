@@ -59,7 +59,7 @@ public abstract class ChapterImageButtonMixin {
                 || ChapterCanvasGif.getGifData(this.chapterImage).isPresent();
     }
 
-    // 新版 FTB 会忽略无点击动作的章节图片，允许特殊画布元素接收鼠标命中
+    // 仅为本模组特殊画布元素保留原生鼠标命中和点击入口
     @Redirect(
             method = {"checkMouseOver", "mousePressed"},
             at = @At(
