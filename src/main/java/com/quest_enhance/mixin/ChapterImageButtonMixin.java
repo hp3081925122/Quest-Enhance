@@ -1,7 +1,6 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.DecorativeAnchor;
-import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.canvas.ChapterCanvasGif;
 import com.quest_enhance.client.canvas.ChapterCanvasText;
 import com.quest_enhance.client.canvas.ChapterCanvasVideo;
@@ -42,12 +41,6 @@ import java.util.Optional;
 
 @Mixin(value = ChapterImageButton.class, remap = false)
 public abstract class ChapterImageButtonMixin {
-    @Unique
-    private boolean quest_enhance$anchor_selected;
-
-    @Unique
-    private boolean quest_enhance$anchor_selection_state_known;
-
     @Shadow
     @Final
     private QuestScreen questScreen;
@@ -55,6 +48,27 @@ public abstract class ChapterImageButtonMixin {
     @Shadow
     @Final
     private ChapterImage chapterImage;
+
+    // 无点击行为但配置了悬停文本的普通图片，在非编辑模式下也参与原生命中检测
+    @Redirect(
+            method = "checkMouseOver",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;getClick()Ljava/lang/String;"
+            )
+    )
+    private String quest_enhance$allow_hover_only_image(ChapterImage image) {
+        if (image.getClick().isEmpty()
+                && !((ChapterImageAccessor) (Object) image).quest_enhance$get_hover().isEmpty()
+                && ChapterCanvasText.getTextData(image).isEmpty()
+                && ChapterCanvasVideo.getVideoData(image).isEmpty()
+                && ChapterCanvasGif.getGifData(image).isEmpty()
+                && !DecorativeAnchor.isAnchor(image)) {
+            return "quest_enhance:hover_only";
+        }
+
+        return image.getClick();
+    }
 
     // 为画布文字、视频或辅助点打开标题和类型都正确的原生属性编辑页
     @Inject(method = "openEditScreen", at = @At("HEAD"), cancellable = true)
@@ -203,15 +217,6 @@ public abstract class ChapterImageButtonMixin {
             QuestShape circle = QuestShape.get("circle");
             boolean selected = screen.quest_enhance$get_file().canEdit()
                     && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
-            if (!this.quest_enhance$anchor_selection_state_known || selected != this.quest_enhance$anchor_selected) {
-                QuestEnhance.LOGGER.debug(
-                        "Decorative anchor selection changed: node={}, selected={}",
-                        DecorativeAnchor.nodeKey(this.chapterImage).orElse("unknown"),
-                        selected
-                );
-                this.quest_enhance$anchor_selected = selected;
-                this.quest_enhance$anchor_selection_state_known = true;
-            }
             circle.getShape().withColor(Color4I.DARK_GRAY).draw(graphics, x, y, width, height);
             circle.getBackground().withColor(Color4I.WHITE.withAlpha(150)).draw(graphics, x, y, width, height);
             circle.getOutline().withColor(Color4I.rgb(0x808080)).draw(graphics, x, y, width, height);

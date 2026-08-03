@@ -4,6 +4,7 @@ import com.quest_enhance.client.canvas.ChapterCanvasText;
 import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
+import com.quest_enhance.common.description.QuestDescriptionComponents;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -31,7 +32,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -676,18 +676,14 @@ public final class DescriptionComponentMenu {
             boolean fit,
             String hover_text
     ) {
-        StringBuilder markup = new StringBuilder("{image:")
-                .append(icon.replace(" ", "%20"))
-                .append(" width:").append(width)
-                .append(" height:").append(height)
-                .append(" align:").append(align.name().toLowerCase(Locale.ROOT));
-        if (fit) {
-            markup.append(" fit:true");
-        }
-        if (!hover_text.isBlank()) {
-            markup.append(" text:").append(hover_text.replace(" ", "%20"));
-        }
-        return markup.append('}').toString();
+        return QuestDescriptionComponents.image(
+                icon,
+                width,
+                height,
+                align.name(),
+                fit,
+                hover_text
+        );
     }
 
     // 打开 Quest Enhance 已有的视频选择与显示文字配置流程
@@ -706,6 +702,59 @@ public final class DescriptionComponentMenu {
                         "\n" + QuestDescriptionGif.createMarkup(resource_location)
                 )
         );
+    }
+
+    // 编辑描述 GIF 时保留动态标记，并允许改选资源和调整图片布局
+    public static void editGif(Panel parent, String raw_text, Consumer<String> save) {
+        QuestDescriptionGif.getData(raw_text).ifPresent(data -> GifSelectionScreen.open(
+                parent,
+                data.resource_location(),
+                resource_location -> openGifConfig(
+                        parent,
+                        new QuestDescriptionGif.GifData(
+                                resource_location,
+                                data.width(),
+                                data.height(),
+                                data.align(),
+                                data.fit(),
+                                data.hover_text()
+                        ),
+                        save
+                )
+        ));
+    }
+
+    // 为任务描述 GIF 提供与普通图片一致的尺寸、对齐、自适应和悬停文字配置
+    private static void openGifConfig(
+            Panel parent,
+            QuestDescriptionGif.GifData initial_data,
+            Consumer<String> save
+    ) {
+        int[] width = {initial_data.width()};
+        int[] height = {initial_data.height()};
+        ImageAlign[] align = {initial_data.align()};
+        boolean[] fit = {initial_data.fit()};
+        String[] hover_text = {initial_data.hover_text()};
+        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+            if (accepted) {
+                save.accept(QuestDescriptionGif.createMarkup(new QuestDescriptionGif.GifData(
+                        initial_data.resource_location(),
+                        width[0],
+                        height[0],
+                        align[0],
+                        fit[0],
+                        hover_text[0]
+                )));
+            }
+            parent.run();
+        }) {
+            @Override
+            public Component getName() {
+                return Component.translatable("quest_enhance.gif.description.add");
+            }
+        };
+        addImageFields(group, width, height, align, fit, hover_text);
+        new EditConfigScreen(group).openGui();
     }
 
     private enum TextAction {

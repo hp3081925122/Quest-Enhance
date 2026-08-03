@@ -1,11 +1,17 @@
 package com.quest_enhance.kubejs;
 
+import com.quest_enhance.DecorativeAnchor;
+import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.common.canvas.ChapterCanvasData;
+import com.quest_enhance.common.description.QuestDescriptionComponents;
+import com.quest_enhance.mixin.ChapterAccessor;
 import dev.ftb.mods.ftbquests.net.CreateObjectResponseMessage;
 import dev.ftb.mods.ftbquests.net.EditObjectResponseMessage;
 import dev.ftb.mods.ftbquests.net.MoveMovableResponseMessage;
 import dev.ftb.mods.ftbquests.net.OpenQuestBookMessage;
 import dev.ftb.mods.ftbquests.quest.BaseQuestFile;
 import dev.ftb.mods.ftbquests.quest.Chapter;
+import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObject;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
@@ -20,15 +26,21 @@ import dev.ftb.mods.ftbquests.util.ProgressChange;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public final class QuestUtils {
     private static final String CLIENT_FILE_CLASS = "dev.ftb.mods.ftbquests.client.ClientQuestFile";
+    private static final ResourceLocation DEFAULT_FONT = ResourceLocation.fromNamespaceAndPath("minecraft", "default");
+    private static final String MEDIA_PLACEHOLDER_IMAGE = "#212121";
+    private static boolean canvasImageValidationLogged;
 
     private QuestUtils() {
     }
@@ -72,6 +84,81 @@ public final class QuestUtils {
     public static Task getTask(String id) {
         Long parsedId = parseId(id);
         return parsedId == null ? null : getTask(parsedId);
+    }
+
+    // 查询章节画布中的图片、GIF、视频、文字和辅助点。
+    public static List<ChapterImage> getChapterImages(long chapterId) {
+        BaseQuestFile file = getActiveFile();
+        Chapter chapter = file == null ? null : file.getChapter(chapterId);
+        return chapter == null ? List.of() : List.copyOf(chapter.getImages());
+    }
+
+    public static List<ChapterImage> getChapterImages(String chapterId) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? List.of() : getChapterImages(parsedId);
+    }
+
+    public static int getChapterImageCount(long chapterId) {
+        return getChapterImages(chapterId).size();
+    }
+
+    public static int getChapterImageCount(String chapterId) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? 0 : getChapterImageCount(parsedId);
+    }
+
+    public static ChapterImage getChapterImage(long chapterId, int index) {
+        List<ChapterImage> images = getChapterImages(chapterId);
+        return index >= 0 && index < images.size() ? images.get(index) : null;
+    }
+
+    public static ChapterImage getChapterImage(String chapterId, int index) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : getChapterImage(parsedId, index);
+    }
+
+    public static CompoundTag getChapterImageData(ChapterImage image) {
+        return image == null ? null : image.writeData(new CompoundTag());
+    }
+
+    public static String getChapterImageType(ChapterImage image) {
+        if (image == null) {
+            return "";
+        }
+        if (ChapterCanvasData.getGif(image).isPresent()) {
+            return "gif";
+        }
+        if (ChapterCanvasData.getVideo(image).isPresent()) {
+            return "video";
+        }
+        if (ChapterCanvasData.getText(image, DEFAULT_FONT).isPresent()) {
+            return "text";
+        }
+        return DecorativeAnchor.isAnchor(image) ? "anchor" : "image";
+    }
+
+    public static String getChapterGifResource(ChapterImage image) {
+        return ChapterCanvasData.getGif(image).map(ResourceLocation::toString).orElse(null);
+    }
+
+    public static String getChapterVideoPath(ChapterImage image) {
+        return ChapterCanvasData.getVideo(image).orElse(null);
+    }
+
+    public static String getChapterText(ChapterImage image) {
+        return ChapterCanvasData.getText(image, DEFAULT_FONT)
+                .map(ChapterCanvasData.TextData::text)
+                .orElse(null);
+    }
+
+    public static String getChapterTextFont(ChapterImage image) {
+        return ChapterCanvasData.getText(image, DEFAULT_FONT)
+                .map(data -> data.font().toString())
+                .orElse(null);
+    }
+
+    public static String getDecorativeAnchorKey(ChapterImage image) {
+        return image == null ? null : DecorativeAnchor.nodeKey(image).orElse(null);
     }
 
     // 查询玩家或队伍在任务节点上的状态和进度。
@@ -401,7 +488,14 @@ public final class QuestUtils {
 
     public static boolean hideChapter(long id) {
         ServerQuestFile file = getServerFile();
-        return setObjectBoolean(file == null ? null : file.getChapter(id), "always_invisible", true);
+        Chapter chapter = file == null ? null : file.getChapter(id);
+        if (chapter == null) {
+            return false;
+        }
+
+        ((ChapterAccessor) (Object) chapter).quest_enhance$set_always_invisible(true);
+        syncEditedObject(file, chapter);
+        return true;
     }
 
     public static boolean hideChapter(String id) {
@@ -422,7 +516,14 @@ public final class QuestUtils {
 
     public static boolean unhideChapter(long id) {
         ServerQuestFile file = getServerFile();
-        return setObjectBoolean(file == null ? null : file.getChapter(id), "always_invisible", false);
+        Chapter chapter = file == null ? null : file.getChapter(id);
+        if (chapter == null) {
+            return false;
+        }
+
+        ((ChapterAccessor) (Object) chapter).quest_enhance$set_always_invisible(false);
+        syncEditedObject(file, chapter);
+        return true;
     }
 
     public static boolean unhideChapter(String id) {
@@ -489,6 +590,130 @@ public final class QuestUtils {
     public static boolean setQuestDescription(String id, String... lines) {
         Long parsedId = parseId(id);
         return parsedId != null && setQuestDescription(parsedId, lines);
+    }
+
+    // 构造描述中的网页链接 JSON 组件。
+    public static String descriptionWebLink(String displayText, String url) {
+        return QuestDescriptionComponents.webLink(displayText, url);
+    }
+
+    // 构造描述中的点击复制 JSON 组件。
+    public static String descriptionCopy(String displayText, String value) {
+        return QuestDescriptionComponents.copy(displayText, value);
+    }
+
+    // 构造描述中的命令点击 JSON 组件。
+    public static String descriptionCommand(String displayText, String command) {
+        return QuestDescriptionComponents.command(displayText, command);
+    }
+
+    // 构造描述中的网络图片标记。
+    public static String descriptionImage(
+            String url,
+            int width,
+            int height,
+            String alignment,
+            boolean fit,
+            String hoverText
+    ) {
+        return QuestDescriptionComponents.remoteImage(url, width, height, alignment, fit, hoverText);
+    }
+
+    // 构造描述中的物品图标标记，并保留物品数量、损伤值和 NBT。
+    public static String descriptionItemIcon(
+            ItemStack stack,
+            int width,
+            int height,
+            String alignment,
+            boolean fit,
+            String hoverText
+    ) {
+        return QuestDescriptionComponents.itemIcon(stack, width, height, alignment, fit, hoverText);
+    }
+
+    // 构造描述中的物品悬停 JSON 组件，并保留完整物品 NBT。
+    public static String descriptionItemHover(String displayText, ItemStack stack) {
+        return QuestDescriptionComponents.itemHover(displayText, stack);
+    }
+
+    // 构造描述中的 GIF 标记。
+    public static String descriptionGif(
+            String resourceId,
+            int width,
+            int height,
+            String alignment,
+            boolean fit,
+            String hoverText
+    ) {
+        return QuestDescriptionComponents.gif(resourceId, width, height, alignment, fit, hoverText);
+    }
+
+    // 构造描述中的视频标记并自动编码相对路径。
+    public static String descriptionVideo(String videoPath, String displayText) {
+        return QuestDescriptionComponents.video(videoPath, displayText);
+    }
+
+    // 构造描述中的文字悬停 JSON 组件。
+    public static String descriptionHoverText(String displayText, String hoverText) {
+        return QuestDescriptionComponents.hoverText(displayText, hoverText);
+    }
+
+    // 构造描述中的自定义字体 JSON 组件。
+    public static String descriptionFont(String displayText, String fontId) {
+        return QuestDescriptionComponents.font(displayText, fontId);
+    }
+
+    // 构造描述中的本地化 JSON 组件。
+    public static String descriptionTranslation(String displayText, String translationKey) {
+        return QuestDescriptionComponents.translation(displayText, translationKey);
+    }
+
+    // 构造描述中的按键绑定 JSON 组件。
+    public static String descriptionKeybind(String keybind) {
+        return QuestDescriptionComponents.keybind(keybind);
+    }
+
+    // 使用默认布局和颜色构造描述表格。
+    public static String descriptionTable(List<?> rows, boolean header, String alignment) {
+        return descriptionTable(
+                rows,
+                header,
+                alignment,
+                0,
+                18,
+                1,
+                0x808080,
+                0x374151,
+                0x1F2937,
+                0xFFFFFF
+        );
+    }
+
+    // 使用完整布局和颜色参数构造描述表格，颜色使用 0xRRGGBB。
+    public static String descriptionTable(
+            List<?> rows,
+            boolean header,
+            String alignment,
+            int tableWidth,
+            int rowHeight,
+            int lineWidth,
+            int borderColor,
+            int headerColor,
+            int cellColor,
+            int textColor
+    ) {
+        return QuestDescriptionComponents.table(
+                rows,
+                header,
+                alignment,
+                tableWidth,
+                rowHeight,
+                lineWidth,
+                0xFF000000 | borderColor & 0xFFFFFF,
+                0xFF000000 | headerColor & 0xFFFFFF,
+                0xFF000000 | cellColor & 0xFFFFFF,
+                0xFF000000 | textColor & 0xFFFFFF
+        );
     }
 
     public static boolean setQuestSize(long questId, double size) {
@@ -683,6 +908,371 @@ public final class QuestUtils {
         return createReward(questId, type, null);
     }
 
+    // 创建原生图片及本模组支持的画布媒体元素，并通过章节编辑消息同步客户端。
+    public static ChapterImage createChapterImage(
+            long chapterId,
+            String resource,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        ResourceLocation resourceLocation = resource == null ? null : ResourceLocation.tryParse(resource);
+        return resourceLocation == null
+                ? null
+                : createCanvasImage(chapterId, resourceLocation.toString(), "", x, y, width, height);
+    }
+
+    public static ChapterImage createChapterImage(
+            String chapterId,
+            String resource,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : createChapterImage(parsedId, resource, x, y, width, height);
+    }
+
+    public static ChapterImage createChapterGif(
+            long chapterId,
+            String resource,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        ResourceLocation resourceLocation = resource == null ? null : ResourceLocation.tryParse(resource);
+        return resourceLocation == null
+                ? null
+                : createCanvasImage(
+                        chapterId,
+                        MEDIA_PLACEHOLDER_IMAGE,
+                        ChapterCanvasData.gifClick(resourceLocation),
+                        x,
+                        y,
+                        width,
+                        height
+                );
+    }
+
+    public static ChapterImage createChapterGif(
+            String chapterId,
+            String resource,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : createChapterGif(parsedId, resource, x, y, width, height);
+    }
+
+    public static ChapterImage createChapterVideo(
+            long chapterId,
+            String videoPath,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        String click = ChapterCanvasData.videoClick(videoPath).orElse(null);
+        return click == null
+                ? null
+                : createCanvasImage(chapterId, MEDIA_PLACEHOLDER_IMAGE, click, x, y, width, height);
+    }
+
+    public static ChapterImage createChapterVideo(
+            String chapterId,
+            String videoPath,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : createChapterVideo(parsedId, videoPath, x, y, width, height);
+    }
+
+    public static ChapterImage createChapterText(
+            long chapterId,
+            String text,
+            String font,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        ResourceLocation fontLocation = font == null ? null : ResourceLocation.tryParse(font);
+        if (text == null || fontLocation == null) {
+            return null;
+        }
+        return createCanvasImage(
+                chapterId,
+                "",
+                ChapterCanvasData.textClick(text, fontLocation),
+                x,
+                y,
+                width,
+                height
+        );
+    }
+
+    public static ChapterImage createChapterText(
+            String chapterId,
+            String text,
+            String font,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : createChapterText(parsedId, text, font, x, y, width, height);
+    }
+
+    public static ChapterImage createDecorativeAnchor(long chapterId, double x, double y) {
+        return createCanvasImage(
+                chapterId,
+                "",
+                ChapterCanvasData.anchorClick(UUID.randomUUID()),
+                x,
+                y,
+                0.4D,
+                0.4D
+        );
+    }
+
+    public static ChapterImage createDecorativeAnchor(String chapterId, double x, double y) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : createDecorativeAnchor(parsedId, x, y);
+    }
+
+    // 修改画布元素的原生字段，所有入口都会校验对象仍属于服务端当前章节。
+    public static boolean setChapterImagePosition(ChapterImage image, double x, double y) {
+        if (!Double.isFinite(x) || !Double.isFinite(y)) {
+            return false;
+        }
+        return updateChapterImage(image, data -> {
+            data.putDouble("x", x);
+            data.putDouble("y", y);
+        });
+    }
+
+    public static boolean setChapterImageSize(ChapterImage image, double width, double height) {
+        if (!isPositiveFinite(width) || !isPositiveFinite(height)) {
+            return false;
+        }
+        return updateChapterImage(image, data -> {
+            data.putDouble("width", width);
+            data.putDouble("height", height);
+        });
+    }
+
+    public static boolean setChapterImageRotation(ChapterImage image, double rotation) {
+        if (!Double.isFinite(rotation) || rotation < -180.0D || rotation > 180.0D) {
+            return false;
+        }
+        return updateChapterImage(image, data -> data.putDouble("rotation", rotation));
+    }
+
+    public static boolean setChapterImageResource(ChapterImage image, String resource) {
+        ResourceLocation resourceLocation = resource == null ? null : ResourceLocation.tryParse(resource);
+        return resourceLocation != null
+                && updateChapterImage(image, data -> data.putString("image", resourceLocation.toString()));
+    }
+
+    public static boolean setChapterImageColor(ChapterImage image, int rgb) {
+        return updateChapterImage(image, data -> data.putInt("color", rgb & 0xFFFFFF));
+    }
+
+    public static boolean setChapterImageAlpha(ChapterImage image, int alpha) {
+        return alpha >= 0 && alpha <= 255
+                && updateChapterImage(image, data -> data.putInt("alpha", alpha));
+    }
+
+    public static boolean setChapterImageOrder(ChapterImage image, int order) {
+        return updateChapterImage(image, data -> data.putInt("order", order));
+    }
+
+    public static boolean setChapterImageHover(ChapterImage image, String... lines) {
+        if (lines == null) {
+            return false;
+        }
+        return updateChapterImage(image, data -> {
+            data.remove("hover");
+            ListTag hover = new ListTag();
+            for (String line : lines) {
+                if (line != null) {
+                    hover.add(StringTag.valueOf(line));
+                }
+            }
+            if (!hover.isEmpty()) {
+                data.put("hover", hover);
+            }
+        });
+    }
+
+    public static boolean setChapterImageClick(ChapterImage image, String click) {
+        if (click == null) {
+            return false;
+        }
+        return updateChapterImage(image, data -> {
+            if (click.isEmpty()) {
+                data.remove("click");
+            } else {
+                data.putString("click", click);
+            }
+        });
+    }
+
+    public static boolean setChapterImageEditorsOnly(ChapterImage image, boolean editorsOnly) {
+        return updateChapterImage(image, data -> data.putBoolean("dev", editorsOnly));
+    }
+
+    public static boolean setChapterImageAlignToCorner(ChapterImage image, boolean alignToCorner) {
+        return updateChapterImage(image, data -> data.putBoolean("corner", alignToCorner));
+    }
+
+    public static boolean setChapterImageDependency(ChapterImage image, long questId) {
+        Quest quest = getServerQuest(questId);
+        return quest != null
+                && updateChapterImage(image, data -> data.putString("dependency", quest.getCodeString()));
+    }
+
+    public static boolean setChapterImageDependency(ChapterImage image, String questId) {
+        Long parsedId = parseId(questId);
+        return parsedId != null && setChapterImageDependency(image, parsedId);
+    }
+
+    public static boolean clearChapterImageDependency(ChapterImage image) {
+        return updateChapterImage(image, data -> data.remove("dependency"));
+    }
+
+    // 修改 GIF、视频和文字的专用数据时保留元素类型及其他原生属性。
+    public static boolean setChapterGifResource(ChapterImage image, String resource) {
+        ResourceLocation resourceLocation = resource == null ? null : ResourceLocation.tryParse(resource);
+        return resourceLocation != null
+                && "gif".equals(getChapterImageType(image))
+                && updateChapterImage(
+                        image,
+                        data -> data.putString("click", ChapterCanvasData.gifClick(resourceLocation))
+                );
+    }
+
+    public static boolean setChapterVideoPath(ChapterImage image, String videoPath) {
+        String click = ChapterCanvasData.videoClick(videoPath).orElse(null);
+        return click != null
+                && "video".equals(getChapterImageType(image))
+                && updateChapterImage(image, data -> data.putString("click", click));
+    }
+
+    public static boolean setChapterText(ChapterImage image, String text) {
+        ChapterCanvasData.TextData current = ChapterCanvasData.getText(image, DEFAULT_FONT).orElse(null);
+        return text != null
+                && current != null
+                && updateChapterImage(
+                        image,
+                        data -> data.putString("click", ChapterCanvasData.textClick(text, current.font()))
+                );
+    }
+
+    public static boolean setChapterTextFont(ChapterImage image, String font) {
+        ChapterCanvasData.TextData current = ChapterCanvasData.getText(image, DEFAULT_FONT).orElse(null);
+        ResourceLocation fontLocation = font == null ? null : ResourceLocation.tryParse(font);
+        return current != null
+                && fontLocation != null
+                && updateChapterImage(
+                        image,
+                        data -> data.putString("click", ChapterCanvasData.textClick(current.text(), fontLocation))
+                );
+    }
+
+    // 复制、跨章节移动和删除时保留 ChapterImage 的章节级同步语义。
+    public static ChapterImage copyChapterImage(ChapterImage image, long chapterId, double x, double y) {
+        ServerQuestFile file = getServerFile();
+        Chapter targetChapter = file == null ? null : file.getChapter(chapterId);
+        if (!isServerChapterImage(image)
+                || targetChapter == null
+                || !Double.isFinite(x)
+                || !Double.isFinite(y)) {
+            return null;
+        }
+
+        CompoundTag data = image.writeData(new CompoundTag());
+        data.putDouble("x", x);
+        data.putDouble("y", y);
+        ChapterImage copy = new ChapterImage(targetChapter);
+        copy.readData(data);
+        if (DecorativeAnchor.isAnchor(copy)) {
+            DecorativeAnchor.assignNewId(copy);
+        }
+        targetChapter.addImage(copy);
+        syncEditedObject(file, targetChapter);
+        return copy;
+    }
+
+    public static ChapterImage copyChapterImage(ChapterImage image, String chapterId, double x, double y) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : copyChapterImage(image, parsedId, x, y);
+    }
+
+    public static ChapterImage moveChapterImage(ChapterImage image, long chapterId, double x, double y) {
+        ServerQuestFile file = getServerFile();
+        Chapter targetChapter = file == null ? null : file.getChapter(chapterId);
+        if (!isServerChapterImage(image)
+                || targetChapter == null
+                || !Double.isFinite(x)
+                || !Double.isFinite(y)) {
+            return null;
+        }
+
+        Chapter sourceChapter = image.getChapter();
+        if (sourceChapter == targetChapter) {
+            image.setPosition(x, y);
+            syncEditedObject(file, sourceChapter);
+            return image;
+        }
+
+        CompoundTag data = image.writeData(new CompoundTag());
+        data.putDouble("x", x);
+        data.putDouble("y", y);
+        ChapterImage moved = new ChapterImage(targetChapter);
+        moved.readData(data);
+        sourceChapter.removeImage(image);
+        targetChapter.addImage(moved);
+        syncEditedObject(file, sourceChapter);
+        syncEditedObject(file, targetChapter);
+        return moved;
+    }
+
+    public static ChapterImage moveChapterImage(ChapterImage image, String chapterId, double x, double y) {
+        Long parsedId = parseId(chapterId);
+        return parsedId == null ? null : moveChapterImage(image, parsedId, x, y);
+    }
+
+    public static boolean deleteChapterImage(ChapterImage image) {
+        ServerQuestFile file = getServerFile();
+        if (file == null || !isServerChapterImage(image)) {
+            return false;
+        }
+
+        Chapter chapter = image.getChapter();
+        chapter.removeImage(image);
+        syncEditedObject(file, chapter);
+        return true;
+    }
+
+    public static boolean deleteChapterImage(long chapterId, int index) {
+        return deleteChapterImage(getServerChapterImage(chapterId, index));
+    }
+
+    public static boolean deleteChapterImage(String chapterId, int index) {
+        Long parsedId = parseId(chapterId);
+        return parsedId != null && deleteChapterImage(parsedId, index);
+    }
+
     public static boolean deleteObject(long id) {
         ServerQuestFile file = getServerFile();
         if (file == null || file.getBase(id) == null) {
@@ -838,6 +1428,111 @@ public final class QuestUtils {
     private static Task getServerTask(long id) {
         ServerQuestFile file = getServerFile();
         return file == null ? null : file.getTask(id);
+    }
+
+    // 创建章节级画布元素，并复用章节编辑同步覆盖新增图片列表。
+    private static ChapterImage createCanvasImage(
+            long chapterId,
+            String imageResource,
+            String click,
+            double x,
+            double y,
+            double width,
+            double height
+    ) {
+        ServerQuestFile file = getServerFile();
+        Chapter chapter = file == null ? null : file.getChapter(chapterId);
+        if (file == null
+                || chapter == null
+                || imageResource == null
+                || click == null
+                || !Double.isFinite(x)
+                || !Double.isFinite(y)
+                || !isPositiveFinite(width)
+                || !isPositiveFinite(height)) {
+            return null;
+        }
+
+        CompoundTag data = new CompoundTag();
+        data.putDouble("x", x);
+        data.putDouble("y", y);
+        data.putDouble("width", width);
+        data.putDouble("height", height);
+        data.putDouble("rotation", 0.0D);
+        data.putString("image", imageResource);
+        if (!click.isEmpty()) {
+            data.putString("click", click);
+        }
+
+        ChapterImage image = new ChapterImage(chapter);
+        image.readData(data);
+        chapter.addImage(image);
+        syncEditedObject(file, chapter);
+        return image;
+    }
+
+    private static ChapterImage getServerChapterImage(long chapterId, int index) {
+        ServerQuestFile file = getServerFile();
+        Chapter chapter = file == null ? null : file.getChapter(chapterId);
+        return chapter != null && index >= 0 && index < chapter.getImages().size()
+                ? chapter.getImages().get(index)
+                : null;
+    }
+
+    private static boolean isServerChapterImage(ChapterImage image) {
+        ServerQuestFile file = getServerFile();
+        if (file == null || image == null || image.getChapter() == null) {
+            if (!canvasImageValidationLogged) {
+                canvasImageValidationLogged = true;
+                QuestEnhance.LOGGER.warn(
+                        "Canvas image validation failed: filePresent={}, imagePresent={}, chapterPresent={}",
+                        file != null,
+                        image != null,
+                        image != null && image.getChapter() != null
+                );
+            }
+            return false;
+        }
+
+        Chapter chapter = image.getChapter();
+        Chapter registeredChapter = file.getChapter(chapter.id);
+        boolean sameChapter = registeredChapter == chapter;
+        boolean chapterContainsImage = chapter.getImages().contains(image);
+        boolean registeredChapterContainsImage = registeredChapter != null
+                && registeredChapter.getImages().contains(image);
+        if ((!sameChapter || !chapterContainsImage) && !canvasImageValidationLogged) {
+            canvasImageValidationLogged = true;
+            QuestEnhance.LOGGER.warn(
+                    "Canvas image validation failed: chapterId={}, imageIdentity={}, chapterIdentity={}, registeredChapterIdentity={}, sameChapter={}, chapterContainsImage={}, registeredChapterContainsImage={}, chapterImageCount={}, registeredChapterImageCount={}",
+                    chapter.getCodeString(),
+                    System.identityHashCode(image),
+                    System.identityHashCode(chapter),
+                    registeredChapter == null ? 0 : System.identityHashCode(registeredChapter),
+                    sameChapter,
+                    chapterContainsImage,
+                    registeredChapterContainsImage,
+                    chapter.getImages().size(),
+                    registeredChapter == null ? 0 : registeredChapter.getImages().size()
+            );
+        }
+        return sameChapter && chapterContainsImage;
+    }
+
+    private static boolean updateChapterImage(ChapterImage image, Consumer<CompoundTag> updater) {
+        ServerQuestFile file = getServerFile();
+        if (file == null || !isServerChapterImage(image)) {
+            return false;
+        }
+
+        CompoundTag data = image.writeData(new CompoundTag());
+        updater.accept(data);
+        image.readData(data);
+        syncEditedObject(file, image.getChapter());
+        return true;
+    }
+
+    private static boolean isPositiveFinite(double value) {
+        return Double.isFinite(value) && value > 0.0D;
     }
 
     private static boolean changeQuestProgress(Entity player, long id, boolean reset) {

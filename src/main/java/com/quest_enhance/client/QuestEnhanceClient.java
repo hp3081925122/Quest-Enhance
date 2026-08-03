@@ -3,6 +3,7 @@ package com.quest_enhance.client;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.description.QuestDescriptionGif;
+import com.quest_enhance.client.description.QuestDescriptionItemIcon;
 import com.quest_enhance.client.description.QuestDescriptionTable;
 import com.quest_enhance.client.description.QuestDescriptionVideo;
 import net.minecraft.network.chat.Component;
@@ -33,6 +34,7 @@ public final class QuestEnhanceClient {
         );
         loading_context.getModEventBus().addListener(QuestEnhanceClient::addPackFinder);
         loading_context.getModEventBus().addListener(QuestDescriptionGif::clientSetup);
+        loading_context.getModEventBus().addListener(QuestDescriptionItemIcon::clientSetup);
         loading_context.getModEventBus().addListener(QuestDescriptionVideo::clientSetup);
         loading_context.getModEventBus().addListener(QuestDescriptionTable::clientSetup);
     }

@@ -1,6 +1,7 @@
 package com.quest_enhance.client.description;
 
 import com.quest_enhance.client.quest.QuestVideoData;
+import com.quest_enhance.common.description.QuestDescriptionComponents;
 import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -31,15 +32,7 @@ public final class QuestDescriptionVideo {
 
     // 将视频路径编码保存，并把显示文字以可直接编辑的明文写入描述标记
     public static String createMarkup(String video_path, String display_text) {
-        String encoded_path = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(video_path.getBytes(StandardCharsets.UTF_8));
-        String escaped_text = display_text
-                .replace("%", "%25")
-                .replace("{", "%7B")
-                .replace("}", "%7D")
-                .replace(" ", "%20");
-        return "{" + PROPERTY + ":" + encoded_path + " " + LABEL_PROPERTY + ":" + escaped_text + "}";
+        return QuestDescriptionComponents.video(video_path, display_text);
     }
 
     // 从描述属性或点击事件中还原并校验可分发的视频相对路径

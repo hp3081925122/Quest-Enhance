@@ -1,6 +1,7 @@
 package com.quest_enhance.client.quest;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.common.canvas.ChapterCanvasData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -208,23 +209,7 @@ public final class QuestVideoData {
 
     // 统一保存为使用正斜杠的可分发相对路径
     public static Optional<String> normalize(String video_path) {
-        if (video_path == null || video_path.isBlank()) {
-            return Optional.empty();
-        }
-
-        String normalized_path = video_path.trim().replace('\\', '/');
-        while (normalized_path.startsWith("/")) {
-            normalized_path = normalized_path.substring(1);
-        }
-        if (normalized_path.isBlank() || normalized_path.contains(":")) {
-            return Optional.empty();
-        }
-
-        Path path = Path.of(normalized_path).normalize();
-        if (path.isAbsolute() || path.startsWith("..")) {
-            return Optional.empty();
-        }
-        return Optional.of(path.toString().replace('\\', '/'));
+        return ChapterCanvasData.normalizeVideoPath(video_path);
     }
 
     // 从当前资源包读取模组内视频，并缓存为 VLC 可访问的真实文件

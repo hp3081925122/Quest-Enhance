@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.quest_enhance.common.description.QuestDescriptionComponents;
 import dev.ftb.mods.ftblibrary.config.NameMap;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.ui.Panel;
@@ -67,29 +68,19 @@ public final class QuestDescriptionTable {
 
     // 将表格数据编码为不会受空格和中文影响的单行描述标记
     public static String createMarkup(TableData data) {
-        JsonObject json = new JsonObject();
-        json.addProperty("columns", data.columns());
-        json.addProperty("header", data.header());
-        json.addProperty("alignment", data.alignment().serializedName());
-        json.addProperty("centered", data.alignment() == TextAlignment.CENTER);
-        json.addProperty("table_width", data.tableWidth());
-        json.addProperty("row_height", data.rowHeight());
-        json.addProperty("line_width", data.lineWidth());
-        json.addProperty("border_color", data.borderColor().rgba());
-        json.addProperty("header_color", data.headerColor().rgba());
-        json.addProperty("cell_color", data.cellColor().rgba());
-        json.addProperty("text_color", data.textColor().rgba());
-        JsonArray rows = new JsonArray();
-        for (List<String> row : data.rows()) {
-            JsonArray cells = new JsonArray();
-            row.forEach(cells::add);
-            rows.add(cells);
-        }
-        json.add("rows", rows);
-        String encoded = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(json.toString().getBytes(StandardCharsets.UTF_8));
-        return "{" + PROPERTY + ":" + encoded + "}";
+        return QuestDescriptionComponents.table(
+                data.columns(),
+                data.rows(),
+                data.header(),
+                data.alignment().serializedName(),
+                data.tableWidth(),
+                data.rowHeight(),
+                data.lineWidth(),
+                data.borderColor().rgba(),
+                data.headerColor().rgba(),
+                data.cellColor().rgba(),
+                data.textColor().rgba()
+        );
     }
 
     // 从任务文件中的完整表格标记恢复配置数据

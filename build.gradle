@@ -95,6 +95,10 @@ dependencies {
     compileOnly fg.deobf("dev.latvian.mods:rhino-forge:2001.2.2-build.17") {
         transitive = false
     }
+    runtimeOnly fg.deobf("curse.maven:kubejs-238086:5853326")
+    runtimeOnly fg.deobf("dev.latvian.mods:rhino-forge:2001.2.2-build.17") {
+        transitive = false
+    }
     runtimeOnly(fg.deobf("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}")) {
         transitive = false
     }
