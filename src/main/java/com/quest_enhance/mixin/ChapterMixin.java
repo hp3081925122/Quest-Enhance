@@ -69,7 +69,10 @@ public abstract class ChapterMixin {
                 (Chapter) (Object) this,
                 DecorativeDependencyLines.questNode(quest.getMovableID())
         );
-        HiddenDependencyLines.removeQuest((Chapter) (Object) this, quest.getMovableID());
+        HiddenDependencyLines.removeNode(
+                (Chapter) (Object) this,
+                HiddenDependencyLines.nodeKey(quest)
+        );
     }
 
     // 删除链接任务时同步清理装饰线路径中的链接节点
@@ -81,6 +84,10 @@ public abstract class ChapterMixin {
         DecorativeDependencyLines.removeNode(
                 (Chapter) (Object) this,
                 DecorativeDependencyLines.questLinkNode(link.getMovableID())
+        );
+        HiddenDependencyLines.removeNode(
+                (Chapter) (Object) this,
+                HiddenDependencyLines.nodeKey(link)
         );
     }
 

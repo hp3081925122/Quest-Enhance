@@ -134,7 +134,7 @@ public abstract class QuestButtonMixin {
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
-        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, this.quest);
+        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
     }
 
     // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
@@ -147,10 +147,13 @@ public abstract class QuestButtonMixin {
             index = 0
     )
     private Collection<ContextMenuItem> quest_enhance$add_dependency_line_to_standard_menu(
-            Collection<ContextMenuItem> context_menu
+        Collection<ContextMenuItem> context_menu
     ) {
         List<ContextMenuItem> appended_menu = new java.util.ArrayList<>(context_menu);
-        return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, this.quest);
+        Movable clicked_object = (Object) this instanceof QuestLinkButton
+                ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
+                : this.quest;
+        return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, clicked_object);
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
