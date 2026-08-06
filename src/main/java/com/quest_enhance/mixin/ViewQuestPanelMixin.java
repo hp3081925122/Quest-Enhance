@@ -5,25 +5,37 @@ import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Widget;
 import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
 import dev.ftb.mods.ftbquests.client.gui.quests.ViewQuestPanel;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.function.Consumer;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Mixin(value = ViewQuestPanel.class, remap = false)
 public abstract class ViewQuestPanelMixin {
+    // 只识别标准 Markdown ATX 标题写法，避免误处理正文中的井号
+    @Unique
+    private static final Pattern MARKDOWN_HEADING = Pattern.compile("^(#{1,6})[ \\t]+(.+)$");
+
     @Shadow
     private Quest quest;
 
@@ -110,5 +122,52 @@ public abstract class ViewQuestPanelMixin {
         if (line == -1) {
             component.fit = true;
         }
+    }
+
+    // 将任务描述中的 Markdown ATX 标题转换为不同字号的 FTB 文字控件，普通正文继续沿用原渲染逻辑
+    @Redirect(
+            method = "addDescriptionText",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/ui/TextField;setText(Lnet/minecraft/network/chat/Component;)Ldev/ftb/mods/ftblibrary/ui/TextField;"
+            )
+    )
+    private TextField quest_enhance$render_markdown_heading(TextField field, Component component) {
+        Matcher matcher = MARKDOWN_HEADING.matcher(component.getString());
+        if (!matcher.matches()) {
+            return field.setText(component);
+        }
+
+        int level = matcher.group(1).length();
+        float scale = switch (level) {
+            case 1 -> 1.5F;
+            case 2 -> 1.3F;
+            case 3 -> 1.15F;
+            case 4 -> 1.05F;
+            default -> 1.0F;
+        };
+        int spacing = switch (level) {
+            case 1 -> 18;
+            case 2 -> 16;
+            case 3 -> 14;
+            case 4 -> 12;
+            default -> 10;
+        };
+        int[] prefix_to_skip = {matcher.start(2)};
+        MutableComponent heading = Component.empty();
+        component.visit((style, text) -> {
+            int skip = Math.min(prefix_to_skip[0], text.length());
+            prefix_to_skip[0] -= skip;
+            if (skip < text.length()) {
+                heading.append(Component.literal(text.substring(skip)).withStyle(style.applyFormat(ChatFormatting.BOLD)));
+            }
+            return Optional.empty();
+        }, component.getStyle());
+        int max_width = Math.max(1, (int) (this.panelText.getWidth() / scale));
+        return field.setMaxWidth(max_width)
+                .setText(heading)
+                .setScale(scale)
+                .setSpacing(spacing)
+                .resize(field.getGui().getTheme());
     }
 }

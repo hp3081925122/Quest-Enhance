@@ -6,13 +6,10 @@ import com.quest_enhance.common.canvas.ChapterCanvasData;
 import com.quest_enhance.mixin.ChapterImageAccessor;
 import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icon;
-import dev.ftb.mods.ftblibrary.icon.Icons;
-import dev.ftb.mods.ftbquests.client.gui.CustomToast;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import org.w3c.dom.Node;
@@ -36,9 +33,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public final class ChapterCanvasGif {
-    private static final int MAXIMUM_FRAME_COUNT = 512;
-    private static final int MAXIMUM_FRAME_SIZE = 1024;
-    private static final long MAXIMUM_TOTAL_PIXELS = 16L * 1024L * 1024L;
     private static final Map<ResourceLocation, Optional<Animation>> ANIMATIONS = new HashMap<>();
 
     private ChapterCanvasGif() {
@@ -89,7 +83,7 @@ public final class ChapterCanvasGif {
                 .map(animation -> (double) animation.width / animation.height);
     }
 
-    // 从资源包解码 GIF 帧，并限制尺寸、帧数和总像素量避免占用过量客户端内存
+    // 从资源包解码 GIF 帧
     private static Animation loadAnimation(ResourceLocation resource_location) {
         Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(resource_location);
         if (resource.isEmpty()) {
@@ -107,39 +101,11 @@ public final class ChapterCanvasGif {
             try {
                 reader.setInput(image_input, false, false);
                 int frame_count = reader.getNumImages(true);
-                if (frame_count <= 0 || frame_count > MAXIMUM_FRAME_COUNT) {
-                    showLimitWarning(Component.translatable(
-                            "quest_enhance.gif.limit.frames",
-                            resource_location,
-                            frame_count,
-                            MAXIMUM_FRAME_COUNT
-                    ));
-                    throw new IOException("GIF frame count is outside the supported range: " + frame_count);
+                if (frame_count <= 0) {
+                    throw new IOException("GIF has no frames");
                 }
 
                 GifSize size = readGifSize(reader.getStreamMetadata(), reader.read(0));
-                if (size.width() > MAXIMUM_FRAME_SIZE || size.height() > MAXIMUM_FRAME_SIZE) {
-                    showLimitWarning(Component.translatable(
-                            "quest_enhance.gif.limit.size",
-                            resource_location,
-                            size.width(),
-                            size.height(),
-                            MAXIMUM_FRAME_SIZE,
-                            MAXIMUM_FRAME_SIZE
-                    ));
-                    throw new IOException("GIF frame size is outside the supported range: " + size.width() + "x" + size.height());
-                }
-                if ((long) size.width() * size.height() * frame_count > MAXIMUM_TOTAL_PIXELS) {
-                    showLimitWarning(Component.translatable(
-                            "quest_enhance.gif.limit.total_pixels",
-                            resource_location,
-                            size.width(),
-                            size.height(),
-                            frame_count,
-                            MAXIMUM_TOTAL_PIXELS
-                    ));
-                    throw new IOException("GIF is too large to animate safely: " + size.width() + "x" + size.height() + ", frames=" + frame_count);
-                }
 
                 List<NativeImage> frames = new ArrayList<>(frame_count);
                 long[] frame_delays = new long[frame_count];
@@ -172,15 +138,6 @@ public final class ChapterCanvasGif {
             QuestEnhance.LOGGER.error("Failed to load GIF animation {}", resource_location, exception);
             return null;
         }
-    }
-
-    // 在资源首次触发限制时显示提示，避免仅在日志中报错而编辑者没有反馈
-    private static void showLimitWarning(Component message) {
-        Minecraft.getInstance().getToasts().addToast(new CustomToast(
-                Component.translatable("quest_enhance.gif.limit.title"),
-                Icons.INFO,
-                message
-        ));
     }
 
     // 从 GIF 流元数据读取逻辑画布尺寸，缺失时回退到首帧尺寸
