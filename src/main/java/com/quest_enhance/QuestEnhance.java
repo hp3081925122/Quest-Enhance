@@ -4,6 +4,7 @@ import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionTable;
 import com.quest_enhance.client.description.QuestDescriptionVideo;
+import com.quest_enhance.common.network.QuestEnhanceNetwork;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
@@ -43,6 +44,7 @@ public final class QuestEnhance {
                 MOD_ID + "-client.toml"
         );
         mod_event_bus.addListener(this::addPackFinder);
+        mod_event_bus.addListener(QuestEnhanceNetwork::register);
 
         // 只在客户端模组总线上注册任务描述视频解析器
         if (FMLEnvironment.dist == Dist.CLIENT) {

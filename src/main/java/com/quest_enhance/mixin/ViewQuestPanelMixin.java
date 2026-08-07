@@ -1,10 +1,12 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.description.DescriptionComponentMenu;
+import com.quest_enhance.client.description.PlayerPersistentDataClient;
 import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Widget;
 import dev.ftb.mods.ftblibrary.util.client.ClientTextComponentUtils;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
@@ -18,6 +20,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.function.Consumer;
@@ -47,6 +50,24 @@ public abstract class ViewQuestPanelMixin {
         if (line == -1) {
             component.setFit(true);
         }
+    }
+
+    // 打开任务详情时预先请求当前描述需要的服务端持久化数据。
+    @Inject(method = "addWidgets", at = @At("HEAD"))
+    private void quest_enhance$request_player_persistent_data(CallbackInfo callback_info) {
+        PlayerPersistentDataClient.request(this.quest.getDescription(), (Panel) (Object) this);
+    }
+
+    // 渲染描述时将持久化数据占位组件替换为当前玩家的实际值。
+    @Redirect(
+            method = "addDescriptionText",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/ui/TextField;setText(Lnet/minecraft/network/chat/Component;)Ldev/ftb/mods/ftblibrary/ui/TextField;"
+            )
+    )
+    private TextField quest_enhance$resolve_player_persistent_data(TextField field, Component component) {
+        return field.setText(PlayerPersistentDataClient.resolve(component).orElse(component));
     }
 
     // 编辑独立快捷 JSON 组件时打开对应配置页，未知内容继续使用原版字符串编辑
