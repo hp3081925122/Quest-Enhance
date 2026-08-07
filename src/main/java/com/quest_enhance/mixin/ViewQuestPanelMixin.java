@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.description.DescriptionComponentMenu;
+import com.quest_enhance.client.description.PlayerPersistentDataClient;
 import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
@@ -124,6 +125,12 @@ public abstract class ViewQuestPanelMixin {
         }
     }
 
+    // 打开任务详情时预先请求当前描述需要的服务端持久化数据。
+    @Inject(method = "addWidgets", at = @At("HEAD"))
+    private void quest_enhance$request_player_persistent_data(CallbackInfo callback_info) {
+        PlayerPersistentDataClient.request(this.quest.getDescription(), (Panel) (Object) this);
+    }
+
     // 将任务描述中的 Markdown ATX 标题转换为不同字号的 FTB 文字控件，普通正文继续沿用原渲染逻辑
     @Redirect(
             method = "addDescriptionText",
@@ -133,6 +140,11 @@ public abstract class ViewQuestPanelMixin {
             )
     )
     private TextField quest_enhance$render_markdown_heading(TextField field, Component component) {
+        Optional<Component> persistent_data = PlayerPersistentDataClient.resolve(component);
+        if (persistent_data.isPresent()) {
+            return field.setText(persistent_data.get());
+        }
+
         Matcher matcher = MARKDOWN_HEADING.matcher(component.getString());
         if (!matcher.matches()) {
             return field.setText(component);

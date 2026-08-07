@@ -6,12 +6,15 @@
   "refmap": "quest_enhance.refmap.json",
   "mixins": [
     "ChapterAccessor",
-    "ChapterMixin"
+    "ChapterMixin",
+    "QuestObjectAccessor",
+    "TaskCompletionMixin"
   ],
   "client": [
     "ChapterImageAccessor",
     "ChapterImageButtonMixin",
     "ChapterImageMixin",
+    "ChapterButtonMixin",
     "ImageIconMixin",
     "ImageResourceConfigMixin",
     "KillTaskAccessor",

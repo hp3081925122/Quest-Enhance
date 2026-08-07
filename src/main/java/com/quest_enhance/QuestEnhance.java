@@ -1,6 +1,7 @@
 package com.quest_enhance;
 
 import com.quest_enhance.client.QuestEnhanceClient;
+import com.quest_enhance.common.network.QuestEnhanceNetwork;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -16,6 +17,7 @@ public final class QuestEnhance {
 
     // 只在客户端初始化配置、资源包和描述组件，服务端保留 QuestUtils 与通用 Mixin。
     public QuestEnhance(FMLJavaModLoadingContext loading_context) {
+        QuestEnhanceNetwork.init();
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> QuestEnhanceClient.init(loading_context));
     }
 }

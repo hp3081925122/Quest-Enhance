@@ -95,6 +95,11 @@ public final class QuestDescriptionComponents {
         return json(Component.keybind(keybind));
     }
 
+    // 生成读取玩家持久化数据的任务描述占位组件。
+    public static String playerPersistentData(String key, boolean i18n) {
+        return PlayerPersistentDataDescription.create(key, i18n);
+    }
+
     // 生成带完整物品 NBT 的悬停信息 JSON 组件。
     public static String itemHover(String displayText, ItemStack stack) {
         requireStack(stack);

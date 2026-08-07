@@ -1174,7 +1174,7 @@ public final class QuestUtils {
                 && current != null
                 && updateChapterImage(
                         image,
-                        data -> data.putString("click", ChapterCanvasData.textClick(text, current.font()))
+                        data -> data.putString("click", ChapterCanvasData.textClick(text, current.font(), current.scale()))
                 );
     }
 
@@ -1185,7 +1185,7 @@ public final class QuestUtils {
                 && fontLocation != null
                 && updateChapterImage(
                         image,
-                        data -> data.putString("click", ChapterCanvasData.textClick(current.text(), fontLocation))
+                        data -> data.putString("click", ChapterCanvasData.textClick(current.text(), fontLocation, current.scale()))
                 );
     }
 

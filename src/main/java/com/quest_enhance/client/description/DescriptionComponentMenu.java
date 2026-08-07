@@ -5,6 +5,7 @@ import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.common.description.QuestDescriptionComponents;
+import com.quest_enhance.common.description.PlayerPersistentDataDescription;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -121,6 +122,16 @@ public final class DescriptionComponentMenu {
                         button -> openTextComponentConfig(parent, editor, TextAction.KEYBIND)
                 ),
                 new ContextMenuItem(
+                        Component.translatable("quest_enhance.description_component.persistent_data"),
+                        Icons.INFO,
+                        button -> openPersistentDataConfig(
+                                parent,
+                                "example.key",
+                                false,
+                                markup -> editor.quest_enhance$insert_at_end_of_line("\n" + markup)
+                        )
+                ),
+                new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.table"),
                         Icons.INV_IO,
                         button -> QuestDescriptionTable.openConfig(
@@ -180,6 +191,17 @@ public final class DescriptionComponentMenu {
         Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(edited));
         Style style = component.getStyle();
         ClickEvent click_event = style.getClickEvent();
+
+        Optional<PlayerPersistentDataDescription.Placeholder> persistent_data = PlayerPersistentDataDescription.get(component);
+        if (persistent_data.isPresent()) {
+            openPersistentDataConfig(
+                    parent,
+                    persistent_data.get().key(),
+                    persistent_data.get().i18n(),
+                    save
+            );
+            return true;
+        }
 
         // 点击事件组件可直接还原动作值和显示文字
         if (click_event != null) {
@@ -684,6 +706,38 @@ public final class DescriptionComponentMenu {
                 fit,
                 hover_text
         );
+    }
+
+    // 配置任务描述中读取玩家持久化数据的键与本地化开关。
+    private static void openPersistentDataConfig(
+            Panel parent,
+            String initial_key,
+            boolean initial_i18n,
+            Consumer<String> save
+    ) {
+        String[] key = {initial_key};
+        boolean[] i18n = {initial_i18n};
+        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+            if (accepted) {
+                save.accept(QuestDescriptionComponents.playerPersistentData(key[0], i18n[0]));
+            }
+            parent.run();
+        }) {
+            @Override
+            public Component getName() {
+                return Component.translatable("quest_enhance.description_component.persistent_data");
+            }
+        };
+        group.addString(
+                "key",
+                key[0],
+                value -> key[0] = value,
+                key[0],
+                PlayerPersistentDataDescription.DATA_KEY
+        ).setNameKey("quest_enhance.description_component.persistent_data.key");
+        group.addBool("i18n", i18n[0], value -> i18n[0] = value, i18n[0])
+                .setNameKey("quest_enhance.description_component.persistent_data.i18n");
+        new EditConfigScreen(group).openGui();
     }
 
     // 打开 Quest Enhance 已有的视频选择与显示文字配置流程

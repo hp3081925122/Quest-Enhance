@@ -1,12 +1,15 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.ChapterBackground;
 import com.quest_enhance.client.clipboard.ChapterClipboardImage;
 import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.quest_enhance.client.history.QuestScreenEditHistory;
 import com.mojang.datafixers.util.Pair;
 import dev.ftb.mods.ftblibrary.icon.Icons;
+import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.Widget;
+import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.Key;
 import dev.ftb.mods.ftbquests.client.gui.CustomToast;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
@@ -21,8 +24,10 @@ import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
@@ -36,6 +41,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 @Mixin(value = QuestScreen.class, remap = false)
 public abstract class QuestScreenMixin {
@@ -51,9 +57,63 @@ public abstract class QuestScreenMixin {
     @Unique
     private static final Map<Long, QuestScreenEditHistory> quest_enhance$edit_history = new HashMap<>();
 
+    @Unique
+    private static final Map<Chapter, ResourceLocation> quest_enhance$logged_backgrounds = new WeakHashMap<>();
+
+    @Unique
+    private static final Map<ResourceLocation, Icon> quest_enhance$background_icons = new HashMap<>();
+
     @Shadow
     @Final
     private QuestPanel questPanel;
+
+    // 按原版任务书的完整背景层绘制当前章节背景，避免画布滚动偏移导致只覆盖局部区域
+    @Inject(
+            method = "drawBackground",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/ui/BaseScreen;drawBackground(Lnet/minecraft/client/gui/GuiGraphics;Ldev/ftb/mods/ftblibrary/ui/Theme;IIII)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void quest_enhance$draw_chapter_background(
+            GuiGraphics graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        Chapter chapter = ((QuestScreenAccessor) (Object) this).quest_enhance$get_selected_chapter();
+        if (chapter == null || width <= 0 || height <= 0) {
+            return;
+        }
+
+        ChapterBackground.get(chapter).ifPresent(resource_location -> {
+            Icon background_icon = quest_enhance$background_icons.computeIfAbsent(
+                    resource_location,
+                    Icon::getIcon
+            );
+            if (background_icon.isEmpty()) {
+                return;
+            }
+
+            if (!resource_location.equals(quest_enhance$logged_backgrounds.get(chapter))) {
+                QuestEnhance.LOGGER.debug(
+                        "Rendering chapter background: chapter={}, resource={}, x={}, y={}, width={}, height={}",
+                        chapter.getId(),
+                        resource_location,
+                        x,
+                        y,
+                        width,
+                        height
+                );
+                quest_enhance$logged_backgrounds.put(chapter, resource_location);
+            }
+            background_icon.draw(graphics, x, y, width, height);
+        });
+    }
 
     // 将多选任务和图片保存为相对左上角的坐标组，替换原生“不支持复制多个对象”分支
     @Inject(method = "copyObjectsToClipboard", at = @At("HEAD"), cancellable = true)
