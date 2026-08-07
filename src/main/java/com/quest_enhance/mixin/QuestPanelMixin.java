@@ -112,6 +112,11 @@ public abstract class QuestPanelMixin {
             int end_alpha,
             float texture_offset
     ) {
+        // 查看任务详情时隐藏底层画布的原生前置线，避免线条从详情面板底部露出
+        if (this.questScreen.isViewingQuest()) {
+            return;
+        }
+
         if (!(source instanceof QuestButton source_button)) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
                     graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
