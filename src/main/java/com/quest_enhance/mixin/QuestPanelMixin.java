@@ -113,6 +113,11 @@ public abstract class QuestPanelMixin {
             float texture_offset,
             Tesselator tesselator
     ) {
+        // 查看任务详情时隐藏底层画布的原生前置线，避免线条从详情面板底部露出
+        if (this.questScreen.isViewingQuest()) {
+            return;
+        }
+
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
         if (chapter == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(

@@ -307,7 +307,9 @@ public abstract class ChapterImageButtonMixin {
         // 计算保持字体比例且完整放入当前画布框的缩放值
         int text_width = Math.max(1, theme.getStringWidth(text));
         int text_height = Math.max(1, theme.getFontHeight());
-        float scale = Math.max(0.001F, Math.min((float) width / text_width, (float) height / text_height));
+        // 先按画布框适配文字，再叠加文字自身的缩放倍率。
+        float scale = Math.max(0.001F, Math.min((float) width / text_width, (float) height / text_height))
+                * (float) Math.max(0.05D, Math.min(10.0D, data.scale()));
         QuestScreenAccessor screen = (QuestScreenAccessor) (Object) this.questScreen;
         boolean transparent = !this.chapterImage.shouldShowImage(screen.quest_enhance$get_file().selfTeamData);
         int alpha = transparent ? 100 : this.chapterImage.getAlpha();

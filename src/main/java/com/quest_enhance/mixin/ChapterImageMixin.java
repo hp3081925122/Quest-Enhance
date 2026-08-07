@@ -106,6 +106,16 @@ public abstract class ChapterImageMixin {
                     fonts,
                     ChapterCanvasText.DEFAULT_FONT
             ).setNameKey("quest_enhance.chapter_text.font");
+
+            // 为画布文字提供独立于画布框尺寸的显示缩放倍率。
+            config.addDouble(
+                    "text_scale",
+                    data.scale(),
+                    value -> ChapterCanvasText.setScale(image, value),
+                    1.0D,
+                    0.05D,
+                    10.0D
+            ).setNameKey("quest_enhance.chapter_text.scale");
         } else if (video_data.isPresent()) {
             ChapterCanvasVideo.VideoData data = video_data.get();
             config.add(

@@ -4,12 +4,17 @@
   "package": "com.quest_enhance.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BaseQuestFileAccessor",
+    "ChapterAccessor",
     "ChapterImageAccessor",
     "ChapterMixin",
-    "QuestObjectBaseMixin"
+    "QuestObjectBaseMixin",
+    "QuestObjectAccessor",
+    "TaskCompletionMixin"
   ],
   "client": [
     "ChapterImageButtonMixin",
+    "ChapterButtonMixin",
     "ChapterImageMixin",
     "ImageIconMixin",
     "ImageResourceConfigMixin",
