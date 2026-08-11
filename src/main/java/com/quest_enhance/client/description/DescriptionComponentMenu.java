@@ -19,8 +19,15 @@ import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.util.client.ClientUtils;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent.ImageAlign;
+import dev.ftb.mods.ftbquests.client.ClientQuestFile;
+import dev.ftb.mods.ftbquests.client.gui.SelectQuestObjectScreen;
+import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
+import dev.ftb.mods.ftbquests.quest.QuestObjectType;
+import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -55,6 +62,11 @@ public final class DescriptionComponentMenu {
                         Component.translatable("quest_enhance.description_component.web_link"),
                         Icons.GLOBE,
                         button -> openTextComponentConfig(parent, editor, TextAction.WEB_LINK)
+                ),
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.description_component.quest_page"),
+                        Icons.BOOK,
+                        button -> selectQuestPage(editor)
                 ),
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.copy"),
@@ -211,6 +223,25 @@ public final class DescriptionComponentMenu {
                 case RUN_COMMAND -> TextAction.COMMAND;
                 default -> null;
             };
+            // 指定页跳转只接管带合法页码的任务链接，普通 FTB 任务链接保持原行为
+            if (click_event.getAction() == ClickEvent.Action.CHANGE_PAGE) {
+                String[] fields = click_event.getValue().split("/", 2);
+                if (fields.length == 2) {
+                    try {
+                        int page = Integer.parseInt(fields[1]);
+                        Quest quest = QuestObjectBase.parseHexId(fields[0])
+                                .map(ClientQuestFile.INSTANCE::getQuest)
+                                .orElse(null);
+                        if (quest != null && page >= 1) {
+                            openQuestPageConfig(quest, component.getString(), page, component_save);
+                            return true;
+                        }
+                    } catch (NumberFormatException exception) {
+                        return false;
+                    }
+                }
+                return false;
+            }
             if (action == null) {
                 return false;
             }
@@ -441,6 +472,70 @@ public final class DescriptionComponentMenu {
                 return group.getName();
             }
         }.openGui();
+    }
+
+    // 先使用 FTB 原生任务选择器选择目标任务
+    private static void selectQuestPage(MultilineTextEditorAccess editor) {
+        ConfigQuestObject<Quest> quest_config = new ConfigQuestObject<>(QuestObjectType.QUEST);
+        new SelectQuestObjectScreen<>(quest_config, accepted -> {
+            Quest quest = quest_config.getValue();
+            SelectQuestObjectScreen<?> selector = ClientUtils.getCurrentGuiAs(SelectQuestObjectScreen.class);
+            if (selector != null) {
+                selector.closeGui(true);
+            }
+            if (accepted && quest != null) {
+                String selected_text = editor.quest_enhance$get_selected_text();
+                openQuestPageConfig(
+                        quest,
+                        selected_text.isBlank() ? quest.getTitle().getString() : selected_text,
+                        1,
+                        editor::quest_enhance$insert_component
+                );
+            }
+        }).openGui();
+    }
+
+    // 配置目标任务页码和可点击显示文字
+    private static void openQuestPageConfig(
+            Quest quest,
+            String initial_display_text,
+            int initial_page,
+            Consumer<Component> save
+    ) {
+        int page_count = Math.max(1, quest.buildDescriptionIndex().size());
+        String[] display_text = {initial_display_text};
+        int[] page = {Math.max(1, Math.min(initial_page, page_count))};
+
+        // 确认后生成 FTB 已支持的任务 ID 与页码点击值
+        ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
+            if (accepted) {
+                Component component = Component.literal(display_text[0]).withStyle(Style.EMPTY
+                        .withColor(ChatFormatting.AQUA)
+                        .withUnderlined(true)
+                        .withClickEvent(new ClickEvent(
+                                ClickEvent.Action.CHANGE_PAGE,
+                                quest.getCodeString() + "/" + page[0]
+                        )));
+                save.accept(component);
+            }
+        }) {
+            @Override
+            public Component getName() {
+                return Component.translatable("quest_enhance.description_component.quest_page");
+            }
+        };
+
+        // 页码上限取目标任务当前实际描述页数
+        group.addString(
+                "text",
+                display_text[0],
+                value -> display_text[0] = value,
+                display_text[0],
+                NON_EMPTY
+        ).setNameKey("quest_enhance.description_component.display_text");
+        group.addInt("page", page[0], value -> page[0] = value, page[0], 1, page_count)
+                .setNameKey("quest_enhance.description_component.page");
+        new EditConfigScreen(group).setAutoclose(true).openGui();
     }
 
     // 使用 FTB Library 原生物品列表选择展示图标或悬停物品

@@ -1,20 +1,16 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.ChapterBackground;
-import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
-import dev.ftb.mods.ftblibrary.config.ui.SelectImageResourceScreen;
+import com.quest_enhance.client.background.BackgroundImagePicker;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.BaseScreen;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
-import dev.ftb.mods.ftblibrary.ui.ScreenWrapper;
 import dev.ftb.mods.ftbquests.client.gui.ContextMenuBuilder;
 import dev.ftb.mods.ftbquests.client.gui.quests.ChapterPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -45,30 +41,15 @@ public abstract class ChapterButtonMixin {
         context_menu_builder.insertAtTop(List.of(new ContextMenuItem(
                 Component.translatable("quest_enhance.chapter_background"),
                 Icons.ART,
-                button -> {
-                    ImageResourceConfig config = new ImageResourceConfig();
-                    config.setAllowEmpty(true);
-                    config.setCurrentValue(
-                            ChapterBackground.get(this.chapter).orElse(ImageResourceConfig.NONE)
-                    );
-                    new SelectImageResourceScreen(config, accepted -> {
-                        // 只有资源值发生变化时才保存并同步章节背景
-                        if (accepted) {
-                            ResourceLocation resource_location = config.getValue();
-                            ChapterBackground.set(
-                                    this.chapter,
-                                    ImageResourceConfig.NONE.equals(resource_location) ? null : resource_location
-                            );
+                button -> BackgroundImagePicker.open(
+                        screen,
+                        ChapterBackground.get(this.chapter).orElse(null),
+                        resource_location -> {
+                            ChapterBackground.set(this.chapter, resource_location);
                             new EditObjectMessage(this.chapter).sendToServer();
                             ((QuestScreen) screen).refreshQuestPanel();
                         }
-
-                        // FTB 回调不会自动关闭选择器，需要返回原任务书界面
-                        if (Minecraft.getInstance().screen instanceof ScreenWrapper screen_wrapper) {
-                            screen_wrapper.getGui().closeGui(true);
-                        }
-                    }).withGridSize(8, 12).openGui();
-                }
+                )
         )));
         screen.openContextMenu(context_menu_builder.build(screen));
     }
