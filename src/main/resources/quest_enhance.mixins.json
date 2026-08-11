@@ -5,14 +5,18 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BaseQuestFileAccessor",
+    "BaseQuestFileMixin",
     "ChapterAccessor",
     "ChapterImageAccessor",
     "ChapterMixin",
+    "QuestMixin",
     "QuestObjectBaseMixin",
     "QuestObjectAccessor",
     "TaskCompletionMixin"
   ],
   "client": [
+    "ChapterPanelListButtonAccessor",
+    "ChapterPanelMixin",
     "ChapterImageButtonMixin",
     "ChapterButtonMixin",
     "ChapterImageMixin",
@@ -21,6 +25,7 @@
     "KillTaskAccessor",
     "MultilineTextEditorScreenMixin",
     "MultilineTextEditorToolbarMixin",
+    "ModpackButtonMixin",
     "QuestDescriptionFieldMixin",
     "QuestButtonMixin",
     "QuestButtonAccessor",
@@ -34,6 +39,7 @@
     "TaskButtonMixin",
     "TextFieldAccessor",
     "TextFieldMixin",
+    "ViewQuestPanelBackgroundMixin",
     "ViewQuestPanelMixin"
   ],
   "injectors": {

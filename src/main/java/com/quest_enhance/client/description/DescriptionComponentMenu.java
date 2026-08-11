@@ -17,6 +17,7 @@ import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Panel;
+import dev.ftb.mods.ftblibrary.util.client.ClientUtils;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent;
 import dev.ftb.mods.ftblibrary.util.client.ImageComponent.ImageAlign;
 import dev.ftb.mods.ftbquests.client.ClientQuestFile;
@@ -502,6 +503,10 @@ public final class DescriptionComponentMenu {
         ConfigQuestObject<Quest> quest_config = new ConfigQuestObject<>(QuestObjectType.QUEST);
         new SelectQuestObjectScreen<>(quest_config, accepted -> {
             Quest quest = quest_config.getValue();
+            SelectQuestObjectScreen<?> selector = ClientUtils.getCurrentGuiAs(SelectQuestObjectScreen.class);
+            if (selector != null) {
+                selector.closeGui(true);
+            }
             if (accepted && quest != null) {
                 String selected_text = editor.quest_enhance$get_selected_text();
                 openQuestPageConfig(
@@ -511,8 +516,6 @@ public final class DescriptionComponentMenu {
                         1,
                         editor::quest_enhance$insert_component
                 );
-            } else {
-                parent.run();
             }
         }).openGui();
     }
@@ -541,7 +544,6 @@ public final class DescriptionComponentMenu {
                         )));
                 save.accept(component);
             }
-            parent.run();
         }) {
             @Override
             public Component getName() {
@@ -559,7 +561,7 @@ public final class DescriptionComponentMenu {
         ).setNameKey("quest_enhance.description_component.display_text");
         group.addInt("page", page[0], value -> page[0] = value, page[0], 1, page_count)
                 .setNameKey("quest_enhance.description_component.page");
-        new EditConfigScreen(group).openGui();
+        new EditConfigScreen(group).setAutoclose(true).openGui();
     }
 
     // 使用 FTB Library 原生物品列表选择物品图标或物品悬停

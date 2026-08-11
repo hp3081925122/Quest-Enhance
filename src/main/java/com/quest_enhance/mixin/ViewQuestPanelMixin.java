@@ -55,6 +55,10 @@ public abstract class ViewQuestPanelMixin {
     // 打开任务详情时预先请求当前描述需要的服务端持久化数据。
     @Inject(method = "addWidgets", at = @At("HEAD"))
     private void quest_enhance$request_player_persistent_data(CallbackInfo callback_info) {
+        if (this.quest == null) {
+            return;
+        }
+
         PlayerPersistentDataClient.request(this.quest.getDescription(), (Panel) (Object) this);
     }
 

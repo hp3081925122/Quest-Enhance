@@ -1,10 +1,13 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.common.QuestBackground;
 import com.quest_enhance.client.canvas.DecorativeLineMenus;
 import com.quest_enhance.client.canvas.HiddenDependencyLineMenus;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.media.VideoSupport;
+import com.quest_enhance.client.quest.BulkQuestEdit;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
+import com.quest_enhance.client.quest.QuestBackgroundMenus;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
 import dev.ftb.mods.ftblibrary.icon.Icon;
@@ -133,6 +136,10 @@ public abstract class QuestButtonMixin {
         Movable clicked_object = (Object) this instanceof QuestLinkButton
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
+        BulkQuestEdit.append(context_menu, this.questScreen);
+        if (!((Object) this instanceof QuestLinkButton)) {
+            QuestBackgroundMenus.appendBulk(context_menu, this.questScreen);
+        }
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
         return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
     }
@@ -153,7 +160,41 @@ public abstract class QuestButtonMixin {
         Movable clicked_object = (Object) this instanceof QuestLinkButton
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
+        if (!((Object) this instanceof QuestLinkButton)) {
+            appended_menu.add(0, QuestBackgroundMenus.createSingle(this.quest, this.questScreen));
+            appended_menu.add(1, QuestBackgroundMenus.createViewSingle(this.quest, this.questScreen));
+        }
         return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, clicked_object);
+    }
+
+    // 在原版任务框底色之后、图标之前绘制普通任务节点的自定义背景图片
+    @Inject(
+            method = "draw",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/icon/ImageIcon;draw(Lnet/minecraft/client/gui/GuiGraphics;IIII)V",
+                    ordinal = 2
+            )
+    )
+    private void quest_enhance$draw_quest_background(
+            GuiGraphics graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        if ((Object) this instanceof QuestLinkButton) {
+            return;
+        }
+
+        QuestBackground.get(this.quest).ifPresent(resource_location -> {
+            Icon background_icon = Icon.getIcon(resource_location);
+            if (!background_icon.isEmpty()) {
+                background_icon.draw(graphics, x, y, width, height);
+            }
+        });
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
