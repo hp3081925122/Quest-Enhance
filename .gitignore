@@ -20,6 +20,9 @@ hs_err_pid*
 # Common working directory
 run
 runclient-*.log
+.vscode/
+dev-libs/
+*.disabled
 .eclipse/
 bin/
 .vscode/

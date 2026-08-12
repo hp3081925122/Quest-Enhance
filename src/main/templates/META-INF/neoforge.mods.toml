@@ -33,3 +33,9 @@ type = "required"
 versionRange = "[${ftb_quests_version},)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "ponderer"
+type = "optional"
+ordering = "AFTER"
+side = "CLIENT"
