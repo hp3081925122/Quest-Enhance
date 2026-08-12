@@ -30,3 +30,10 @@ mandatory = true
 versionRange = "[${ftb_quests_version},)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "ponderer"
+mandatory = false
+versionRange = "[1,)"
+ordering = "AFTER"
+side = "CLIENT"

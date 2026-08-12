@@ -607,6 +607,11 @@ public final class QuestUtils {
         return QuestDescriptionComponents.command(displayText, command);
     }
 
+    // 构造点击后打开指定物品思索的描述组件。
+    public static String descriptionPonder(String displayText, String itemId) {
+        return QuestDescriptionComponents.ponder(displayText, itemId);
+    }
+
     // 构造描述中的网络图片标记。
     public static String descriptionImage(
             String url,

@@ -12,6 +12,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
 }
 
 apply plugin: 'org.spongepowered.mixin'
@@ -28,7 +29,7 @@ java {
 }
 
 minecraft {
-    mappings channel: mapping_channel, version: mapping_version
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
     copyIdeResources = true
 
     runs {
@@ -36,6 +37,8 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
                 "${mod_id}" {
@@ -64,9 +67,13 @@ sourceSets.main.resources {
 repositories {
     maven { url = 'https://maven.ftb.dev/releases' }
     maven { url = 'https://maven.architectury.dev/' }
+    maven { url = 'https://maven.createmod.net' }
     maven { url = 'https://api.modrinth.com/maven' }
     maven { url = 'https://www.cursemaven.com' }
     maven { url = 'https://maven.latvian.dev/releases' }
+    flatDir {
+        dirs 'dev-libs'
+    }
 }
 
 dependencies {
@@ -104,6 +111,11 @@ dependencies {
     }
     runtimeOnly fg.deobf("maven.modrinth:watermedia:${watermedia_version}") {
         transitive = false
+    }
+    if (file('dev-libs/ponderer-1.20.1-forge-1.2.2.jar').isFile()) {
+        runtimeOnly fg.deobf("local:ponderer-1.20.1-forge:1.2.2")
+        runtimeOnly fg.deobf("net.createmod.ponder:Ponder-Forge-${minecraft_version}:1.0.91")
+        runtimeOnly fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:1.0.0-215")
     }
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }

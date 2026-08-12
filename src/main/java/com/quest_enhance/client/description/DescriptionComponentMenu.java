@@ -1,6 +1,7 @@
 package com.quest_enhance.client.description;
 
 import com.quest_enhance.client.canvas.ChapterCanvasText;
+import com.quest_enhance.client.integration.PonderIntegration;
 import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
@@ -29,6 +30,7 @@ import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.QuestObjectType;
 import dev.ftb.mods.ftbquests.util.ConfigQuestObject;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -67,6 +69,11 @@ public final class DescriptionComponentMenu {
                         Component.translatable("quest_enhance.description_component.quest_page"),
                         Icons.BOOK,
                         button -> selectQuestPage(editor)
+                ),
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.description_component.ponder"),
+                        Icons.BOOK,
+                        button -> openTextComponentConfig(parent, editor, TextAction.PONDER)
                 ),
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.copy"),
@@ -217,6 +224,24 @@ public final class DescriptionComponentMenu {
 
         // 点击事件组件可直接还原动作值和显示文字
         if (click_event != null) {
+            if (click_event.getAction() == ClickEvent.Action.CHANGE_PAGE
+                    && click_event.getValue().startsWith(QuestDescriptionComponents.PONDER_CLICK_PREFIX)) {
+                ResourceLocation item = ResourceLocation.tryParse(
+                        click_event.getValue().substring(QuestDescriptionComponents.PONDER_CLICK_PREFIX.length())
+                );
+                if (item == null) {
+                    return false;
+                }
+                openTextComponentConfig(
+                        parent,
+                        TextAction.PONDER,
+                        component.getString(),
+                        item.toString(),
+                        ChapterCanvasText.DEFAULT_FONT,
+                        component_save
+                );
+                return true;
+            }
             TextAction action = switch (click_event.getAction()) {
                 case OPEN_URL -> TextAction.WEB_LINK;
                 case COPY_TO_CLIPBOARD -> TextAction.COPY;
@@ -388,10 +413,16 @@ public final class DescriptionComponentMenu {
                             .withUnderlined(true)
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, action_value[0])));
                     case KEYBIND -> Component.keybind(action_value[0]);
+                    case PONDER -> Component.literal(display_text[0]).withStyle(Style.EMPTY
+                            .withColor(ChatFormatting.AQUA)
+                            .withUnderlined(true)
+                            .withClickEvent(new ClickEvent(
+                                    ClickEvent.Action.CHANGE_PAGE,
+                                    QuestDescriptionComponents.PONDER_CLICK_PREFIX + action_value[0]
+                            )));
                 };
                 save.accept(component);
             }
-            parent.run();
         }) {
             @Override
             public Component getName() {
@@ -463,6 +494,51 @@ public final class DescriptionComponentMenu {
                     action_value[0],
                     TECHNICAL_KEY
             ).setNameKey("quest_enhance.description_component.keybind_value");
+            case PONDER -> {
+                // 只列出 The Ponderer 当前场景索引中实际存在的物品，旧配置仍保留以便修正。
+                List<ResourceLocation> available_items = PonderIntegration.getAvailableItems();
+                List<ResourceLocation> selectable_items = new ArrayList<>(available_items);
+                ResourceLocation selected_item = ResourceLocation.tryParse(action_value[0]);
+                if (selected_item != null && !selectable_items.contains(selected_item)) {
+                    selectable_items.add(0, selected_item);
+                }
+                if (selectable_items.isEmpty()) {
+                    group.addString(
+                            "item_id",
+                            action_value[0],
+                            value -> action_value[0] = value,
+                            action_value[0],
+                            TECHNICAL_KEY
+                    ).setNameKey("quest_enhance.description_component.ponder.item_id");
+                } else {
+                    if (selected_item == null) {
+                        selected_item = selectable_items.get(0);
+                        action_value[0] = selected_item.toString();
+                    }
+                    ResourceLocation default_item = selected_item;
+                    NameMap<ResourceLocation> ponder_items = NameMap.of(default_item, selectable_items)
+                            .id(ResourceLocation::toString)
+                            .name(value -> {
+                                if (!available_items.contains(value)) {
+                                    return Component.translatable("quest_enhance.description_component.ponder.unavailable")
+                                            .append(": ")
+                                            .append(Component.literal(value.toString()));
+                                }
+                                return new ItemStack(BuiltInRegistries.ITEM.get(value)).getHoverName()
+                                        .copy()
+                                        .append(Component.literal(" (" + value + ")").withStyle(ChatFormatting.DARK_GRAY));
+                            })
+                            .icon(value -> ItemIcon.getItemIcon(BuiltInRegistries.ITEM.get(value)))
+                            .create();
+                    group.addEnum(
+                            "item_id",
+                            selected_item,
+                            value -> action_value[0] = value.toString(),
+                            ponder_items,
+                            default_item
+                    ).setNameKey("quest_enhance.description_component.ponder.item_id");
+                }
+            }
         }
 
         // 使用 FTB 原生配置屏幕承载输入和确认行为
@@ -471,7 +547,7 @@ public final class DescriptionComponentMenu {
             public Component getTitle() {
                 return group.getName();
             }
-        }.openGui();
+        }.setAutoclose(true).openGui();
     }
 
     // 先使用 FTB 原生任务选择器选择目标任务
@@ -941,6 +1017,11 @@ public final class DescriptionComponentMenu {
                 "quest_enhance.description_component.keybind",
                 "quest_enhance.description_component.default.keybind",
                 "key.jump"
+        ),
+        PONDER(
+                "quest_enhance.description_component.ponder",
+                "quest_enhance.description_component.default.ponder",
+                "minecraft:crafting_table"
         );
 
         private final String title_key;

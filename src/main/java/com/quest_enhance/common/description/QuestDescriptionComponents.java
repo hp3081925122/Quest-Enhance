@@ -20,6 +20,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 public final class QuestDescriptionComponents {
+    public static final String PONDER_CLICK_PREFIX = "quest_enhance:ponder/";
     private static final String GIF_PROPERTY = "quest_enhance_gif";
     private static final String VIDEO_PROPERTY = "quest_enhance_video";
     private static final String VIDEO_LABEL_PROPERTY = "quest_enhance_video_label";
@@ -62,6 +63,21 @@ public final class QuestDescriptionComponents {
                 .withColor(ChatFormatting.GOLD)
                 .withUnderlined(true)
                 .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))));
+    }
+
+    // 生成点击后打开指定物品思索的描述组件。
+    public static String ponder(String displayText, String itemId) {
+        ResourceLocation item = ResourceLocation.tryParse(requireText(itemId, "itemId"));
+        if (item == null) {
+            throw new IllegalArgumentException("itemId is not a valid resource location");
+        }
+        return json(Component.literal(requireText(displayText, "displayText")).withStyle(Style.EMPTY
+                .withColor(ChatFormatting.AQUA)
+                .withUnderlined(true)
+                .withClickEvent(new ClickEvent(
+                        ClickEvent.Action.CHANGE_PAGE,
+                        PONDER_CLICK_PREFIX + item
+                ))));
     }
 
     // 生成带悬停文字的原版 JSON 文字组件。
