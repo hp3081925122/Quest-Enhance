@@ -1,7 +1,7 @@
 package com.quest_enhance.client.description;
 
 import com.quest_enhance.client.canvas.ChapterCanvasText;
-import com.quest_enhance.client.integration.PonderIntegration;
+import com.quest_enhance.client.integration.PonderItemConfig;
 import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
@@ -519,49 +519,13 @@ public final class DescriptionComponentMenu {
                     TECHNICAL_KEY
             ).setNameKey("quest_enhance.description_component.keybind_value");
             case PONDER -> {
-                // 只列出当前 Ponder 索引中存在场景的物品，并保留旧配置中的失效 ID。
-                List<ResourceLocation> available_items = PonderIntegration.getAvailableItems();
-                List<ResourceLocation> selectable_items = new ArrayList<>(available_items);
-                ResourceLocation selected_item = ResourceLocation.tryParse(action_value[0]);
-                if (selected_item != null && !selectable_items.contains(selected_item)) {
-                    selectable_items.add(0, selected_item);
-                }
-                if (selectable_items.isEmpty()) {
-                    group.addString(
-                            "item_id",
-                            action_value[0],
-                            value -> action_value[0] = value,
-                            action_value[0],
-                            TECHNICAL_KEY
-                    ).setNameKey("quest_enhance.description_component.ponder.item_id");
-                } else {
-                    if (selected_item == null) {
-                        selected_item = selectable_items.get(0);
-                        action_value[0] = selected_item.toString();
-                    }
-                    ResourceLocation default_item = selected_item;
-                    NameMap<ResourceLocation> ponder_items = NameMap.of(default_item, selectable_items)
-                            .id(ResourceLocation::toString)
-                            .name(value -> {
-                                if (!available_items.contains(value)) {
-                                    return Component.translatable("quest_enhance.description_component.ponder.unavailable")
-                                            .append(": ")
-                                            .append(Component.literal(value.toString()));
-                                }
-                                return new ItemStack(BuiltInRegistries.ITEM.get(value)).getHoverName()
-                                        .copy()
-                                        .append(Component.literal(" (" + value + ")").withStyle(ChatFormatting.DARK_GRAY));
-                            })
-                            .icon(value -> ItemIcon.getItemIcon(BuiltInRegistries.ITEM.get(value)))
-                            .create();
-                    group.addEnum(
-                            "item_id",
-                            selected_item,
-                            value -> action_value[0] = value.toString(),
-                            ponder_items,
-                            default_item
-                    ).setNameKey("quest_enhance.description_component.ponder.item_id");
-                }
+                group.add(
+                        "item_id",
+                        new PonderItemConfig(),
+                        action_value[0],
+                        value -> action_value[0] = value,
+                        action_value[0]
+                ).setNameKey("quest_enhance.description_component.ponder.item_id");
             }
             case OBFUSCATED -> {
             }

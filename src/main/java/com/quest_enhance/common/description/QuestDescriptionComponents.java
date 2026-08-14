@@ -15,7 +15,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +31,7 @@ public final class QuestDescriptionComponents {
     private static final String VIDEO_PROPERTY = "quest_enhance_video";
     private static final String VIDEO_LABEL_PROPERTY = "quest_enhance_video_label";
     private static final String TABLE_PROPERTY = "quest_enhance_table";
+    private static final int TABLE_FORMAT_VERSION = 3;
     public static final String ITEM_ICON_PROPERTY = "quest_enhance_item";
     private static final Pattern WEB_URL = Pattern.compile("https?://[^\\s{}]+");
     private static final Pattern COMMAND = Pattern.compile("/.+");
@@ -301,6 +306,71 @@ public final class QuestDescriptionComponents {
             int cellColor,
             int textColor
     ) {
+        return table(
+                columns,
+                rows,
+                header,
+                alignment,
+                tableWidth,
+                rowHeight,
+                lineWidth,
+                borderColor,
+                headerColor,
+                cellColor,
+                textColor,
+                List.of(),
+                List.of()
+        );
+    }
+
+    // 保留仅带合并信息的旧调用方式。
+    public static String table(
+            int columns,
+            List<?> rows,
+            boolean header,
+            String alignment,
+            int tableWidth,
+            int rowHeight,
+            int lineWidth,
+            int borderColor,
+            int headerColor,
+            int cellColor,
+            int textColor,
+            List<TableMerge> merges
+    ) {
+        return table(
+                columns,
+                rows,
+                header,
+                alignment,
+                tableWidth,
+                rowHeight,
+                lineWidth,
+                borderColor,
+                headerColor,
+                cellColor,
+                textColor,
+                merges,
+                List.of()
+        );
+    }
+
+    // 使用明确列数、合并信息和单元格样式生成表格标记。
+    public static String table(
+            int columns,
+            List<?> rows,
+            boolean header,
+            String alignment,
+            int tableWidth,
+            int rowHeight,
+            int lineWidth,
+            int borderColor,
+            int headerColor,
+            int cellColor,
+            int textColor,
+            List<TableMerge> merges,
+            List<TableCellStyle> cellStyles
+    ) {
         if (columns < 1 || columns > MAX_COLUMNS) {
             throw new IllegalArgumentException("columns must be between 1 and 8");
         }
@@ -327,10 +397,10 @@ public final class QuestDescriptionComponents {
 
         String normalizedAlignment = normalizeAlignment(alignment);
         JsonObject json = new JsonObject();
+        json.addProperty("format_version", TABLE_FORMAT_VERSION);
         json.addProperty("columns", columns);
         json.addProperty("header", header);
         json.addProperty("alignment", normalizedAlignment);
-        json.addProperty("centered", normalizedAlignment.equals("center"));
         json.addProperty("table_width", clamp(tableWidth, 0, 1000));
         json.addProperty("row_height", clamp(rowHeight, 12, 30));
         json.addProperty("line_width", clamp(lineWidth, 1, 4));
@@ -345,10 +415,83 @@ public final class QuestDescriptionComponents {
             jsonRows.add(cells);
         }
         json.add("rows", jsonRows);
-        String encoded = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(json.toString().getBytes(StandardCharsets.UTF_8));
+        JsonArray jsonMerges = new JsonArray();
+        if (merges != null) {
+            for (TableMerge merge : merges) {
+                if (merge != null
+                        && merge.row() >= 0
+                        && merge.column() >= 0
+                        && (merge.rowSpan() > 1 || merge.columnSpan() > 1)
+                        && merge.row() + merge.rowSpan() <= normalizedRows.size()
+                        && merge.column() + merge.columnSpan() <= columns) {
+                    JsonObject jsonMerge = new JsonObject();
+                    jsonMerge.addProperty("row", merge.row());
+                    jsonMerge.addProperty("column", merge.column());
+                    jsonMerge.addProperty("row_span", merge.rowSpan());
+                    jsonMerge.addProperty("column_span", merge.columnSpan());
+                    jsonMerges.add(jsonMerge);
+                }
+            }
+        }
+        json.add("merges", jsonMerges);
+        JsonArray jsonCellStyles = new JsonArray();
+        int normalizedRowHeight = clamp(rowHeight, 12, 30);
+        int normalizedLineWidth = clamp(lineWidth, 1, 4);
+        String normalizedTableAlignment = normalizedAlignment;
+        if (cellStyles != null) {
+            for (int index = 0; index < normalizedRows.size() * columns && index < cellStyles.size(); index++) {
+                TableCellStyle cellStyle = cellStyles.get(index);
+                if (cellStyle == null) {
+                    continue;
+                }
+                boolean defaultHeader = header && index / columns == 0;
+                if (cellStyle.header() == defaultHeader
+                        && normalizeAlignment(cellStyle.alignment()).equals(normalizedTableAlignment)
+                        && clamp(cellStyle.cellWidth(), 0, 1000) == 0
+                        && clamp(cellStyle.rowHeight(), 12, 30) == normalizedRowHeight
+                        && clamp(cellStyle.lineWidth(), 1, 4) == normalizedLineWidth
+                        && cellStyle.borderColor() == borderColor
+                        && cellStyle.headerColor() == headerColor
+                        && cellStyle.cellColor() == cellColor
+                        && cellStyle.textColor() == textColor) {
+                    continue;
+                }
+                JsonObject jsonCellStyle = new JsonObject();
+                jsonCellStyle.addProperty("row", index / columns);
+                jsonCellStyle.addProperty("column", index % columns);
+                jsonCellStyle.addProperty("header", cellStyle.header());
+                jsonCellStyle.addProperty("alignment", normalizeAlignment(cellStyle.alignment()));
+                jsonCellStyle.addProperty("cell_width", clamp(cellStyle.cellWidth(), 0, 1000));
+                jsonCellStyle.addProperty("row_height", clamp(cellStyle.rowHeight(), 12, 30));
+                jsonCellStyle.addProperty("line_width", clamp(cellStyle.lineWidth(), 1, 4));
+                jsonCellStyle.addProperty("border_color", cellStyle.borderColor());
+                jsonCellStyle.addProperty("header_color", cellStyle.headerColor());
+                jsonCellStyle.addProperty("cell_color", cellStyle.cellColor());
+                jsonCellStyle.addProperty("text_color", cellStyle.textColor());
+                jsonCellStyles.add(jsonCellStyle);
+            }
+        }
+        json.add("cell_styles", jsonCellStyles);
+        String encoded = compressTableJson(json.toString());
         return "{" + TABLE_PROPERTY + ":" + encoded + "}";
+    }
+
+    // 表格单元格合并区域的序列化数据。
+    public record TableMerge(int row, int column, int rowSpan, int columnSpan) {
+    }
+
+    // 表格单元格的独立显示样式。
+    public record TableCellStyle(
+            boolean header,
+            String alignment,
+            int cellWidth,
+            int rowHeight,
+            int lineWidth,
+            int borderColor,
+            int headerColor,
+            int cellColor,
+            int textColor
+    ) {
     }
 
     // 使用原版序列化器统一处理 JSON 转义。
@@ -397,6 +540,22 @@ public final class QuestDescriptionComponents {
             markup.append(" text:").append(hoverText.replace(" ", "%20"));
         }
         return markup.append('}').toString();
+    }
+
+    // 压缩表格 JSON，减少描述编辑器中单个表格标记占用的行数。
+    private static String compressTableJson(String json) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            try (DeflaterOutputStream deflater = new DeflaterOutputStream(
+                    output,
+                    new Deflater(Deflater.BEST_COMPRESSION)
+            )) {
+                deflater.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(output.toByteArray());
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to compress table markup", exception);
+        }
     }
 
     // 校验所有不可为空的描述参数。
