@@ -623,10 +623,12 @@ public final class TableEditorScreen extends BaseScreen {
         }
         this.merges.clear();
         this.merges.addAll(adjusted_merges);
+        // 插入后继续高亮原来的单元格，避免高亮新建的空行。
+        int selected_row = before ? context_row + 1 : context_row;
         this.setSelection(
-                inserted_row,
+                Mth.clamp(selected_row, 0, this.rows.size() - 1),
                 Mth.clamp(context_column, 0, this.columns - 1),
-                inserted_row,
+                Mth.clamp(selected_row, 0, this.rows.size() - 1),
                 Mth.clamp(context_column, 0, this.columns - 1),
                 false
         );
@@ -738,11 +740,13 @@ public final class TableEditorScreen extends BaseScreen {
         }
         this.merges.clear();
         this.merges.addAll(adjusted_merges);
+        // 插入后继续高亮原来的单元格，避免高亮新建的空列。
+        int selected_column = before ? context_column + 1 : context_column;
         this.setSelection(
                 Mth.clamp(context_row, 0, this.rows.size() - 1),
-                inserted_column,
+                Mth.clamp(selected_column, 0, this.columns - 1),
                 Mth.clamp(context_row, 0, this.rows.size() - 1),
-                inserted_column,
+                Mth.clamp(selected_column, 0, this.columns - 1),
                 false
         );
     }

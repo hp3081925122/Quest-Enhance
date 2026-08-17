@@ -12,11 +12,11 @@
       "projectName": "quest_enhance",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\clientRunProgramArgs.txt"
+        "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\clientRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\clientRunVmArgs.txt",
-        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\bin\\main"
+        "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -34,11 +34,11 @@
       "projectName": "quest_enhance",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\serverRunProgramArgs.txt"
+        "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\serverRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\build\\moddev\\serverRunVmArgs.txt",
-        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\1.20.1_forge\\aaa重要mod_1.20.1_forge\\发cf的模组\\Quest Enhance\\bin\\main"
+        "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dquest_enhance%%E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
