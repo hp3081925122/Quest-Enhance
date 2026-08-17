@@ -201,7 +201,7 @@ public abstract class QuestScreenMixin {
             return;
         }
 
-        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
+        Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
         ((QuestScreen) (Object) this).refreshQuestPanel();
         callback_info.setReturnValue(true);
     }

@@ -24,6 +24,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import dev.ftb.mods.ftblibrary.client.gui.widget.Button;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -142,14 +143,15 @@ public abstract class QuestButtonMixin {
             method = "onClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;create(Ldev/ftb/mods/ftbquests/quest/QuestObjectBase;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;create(Ldev/ftb/mods/ftbquests/quest/QuestObjectBase;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;Ldev/ftb/mods/ftblibrary/client/gui/widget/Button;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
             )
     )
     private ContextMenuBuilder quest_enhance$add_dependency_line_to_standard_menu(
             QuestObjectBase object,
-            QuestScreen quest_screen
+            QuestScreen quest_screen,
+            Button button
     ) {
-        ContextMenuBuilder context_menu = ContextMenuBuilder.create(object, quest_screen);
+        ContextMenuBuilder context_menu = ContextMenuBuilder.create(object, quest_screen, button);
         List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
                 new java.util.ArrayList<>(),
                 quest_screen,

@@ -1,7 +1,6 @@
 package com.quest_enhance.mixin;
 
 import dev.ftb.mods.ftblibrary.icon.Icon;
-import dev.ftb.mods.ftblibrary.client.gui.widget.Widget;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -16,7 +15,7 @@ public interface QuestPanelAccessor {
     void quest_enhance$render_connection(
             GuiGraphicsExtractor graphics,
             Icon<?> dependency_line_texture,
-            Widget source,
+            QuestButton source,
             QuestButton dependency,
             Matrix3x2fStack pose,
             float half_width,

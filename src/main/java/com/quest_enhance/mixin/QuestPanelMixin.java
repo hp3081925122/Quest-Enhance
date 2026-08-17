@@ -94,14 +94,14 @@ public abstract class QuestPanelMixin {
             method = "drawOffsetBackground",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestPanel;renderConnection(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Ldev/ftb/mods/ftblibrary/icon/Icon;Ldev/ftb/mods/ftblibrary/client/gui/widget/Widget;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Lorg/joml/Matrix3x2fStack;FIIIIIF)V"
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/quests/QuestPanel;renderConnection(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Ldev/ftb/mods/ftblibrary/icon/Icon;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestButton;Lorg/joml/Matrix3x2fStack;FIIIIIF)V"
             )
     )
     private void quest_enhance$render_hidden_dependency_line(
             QuestPanel panel,
             GuiGraphicsExtractor graphics,
             Icon<?> dependency_line_texture,
-            Widget source,
+            QuestButton source,
             QuestButton dependency,
             Matrix3x2fStack pose,
             float half_width,
@@ -117,13 +117,7 @@ public abstract class QuestPanelMixin {
             return;
         }
 
-        if (!(source instanceof QuestButton source_button)) {
-            ((QuestPanelAccessor) panel).quest_enhance$render_connection(
-                    graphics, dependency_line_texture, source, dependency, pose, half_width, red, green, blue,
-                    start_alpha, end_alpha, texture_offset
-            );
-            return;
-        }
+        QuestButton source_button = source;
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen).quest_enhance$get_selected_chapter();
         if (chapter == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
@@ -258,7 +252,7 @@ public abstract class QuestPanelMixin {
                             this.questScreen.getQuestButtonSize()
                     );
                     if (image != null) {
-                        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
+                        Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
                         this.questScreen.refreshQuestPanel();
                     }
             }
@@ -270,7 +264,7 @@ public abstract class QuestPanelMixin {
                 Icons.CAMERA,
                 button -> GifSelectionScreen.open(button.getParent(), null, resource_location -> {
                     ChapterImage image = ChapterCanvasGif.create(chapter, resource_location, x, y);
-                    Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
+                    Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
                     this.questScreen.refreshQuestPanel();
                 })
         ));
@@ -281,7 +275,7 @@ public abstract class QuestPanelMixin {
                 Icons.MARKER,
                 button -> {
                     ChapterImage anchor = DecorativeAnchor.create(chapter, x, y);
-                    Play2ServerNetworking.send(CreateObjectMessage.create(anchor, null));
+                    Play2ServerNetworking.send(CreateObjectMessage.requestCreation(anchor, false));
                     this.questScreen.refreshQuestPanel();
                 }
         ));
@@ -306,7 +300,7 @@ public abstract class QuestPanelMixin {
                                             this.questScreen.getQuestButtonSize(),
                                             this.questScreen.getTheme()
                                     );
-                                    Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
+                                    Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
                                 }
                                 this.questScreen.openGui();
                             },
@@ -326,7 +320,7 @@ public abstract class QuestPanelMixin {
                     Icons.CAMERA,
                     button -> VideoSelectionScreen.open(button.getParent(), "", false, video_path -> {
                         ChapterImage image = ChapterCanvasVideo.create(chapter, video_path, x, y);
-                        Play2ServerNetworking.send(CreateObjectMessage.create(image, null));
+                        Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
                         this.questScreen.refreshQuestPanel();
                     })
             ));

@@ -35,6 +35,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
@@ -61,13 +62,24 @@ public abstract class ChapterImageButtonMixin {
 
     // 新版 FTB 会忽略无点击动作的章节图片，允许特殊画布元素接收鼠标命中
     // 拦截新版图片编辑操作，为特殊画布元素打开对应属性页
-    @Inject(method = "openEditScreen", at = @At("HEAD"), cancellable = true)
-    private void quest_enhance$open_special_edit_screen(CallbackInfo callback_info) {
+    @Redirect(
+            method = "onClicked",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbquests/quest/ChapterImage;onEditButtonClicked(Ljava/lang/Runnable;Lnet/minecraft/network/chat/Component;)V"
+            )
+    )
+    private void quest_enhance$open_special_edit_screen(
+            ChapterImage image,
+            Runnable callback,
+            Component title
+    ) {
         Optional<ChapterCanvasText.TextData> text_data = ChapterCanvasText.getTextData(this.chapterImage);
         Optional<ChapterCanvasVideo.VideoData> video_data = ChapterCanvasVideo.getVideoData(this.chapterImage);
         Optional<ChapterCanvasGif.GifData> gif_data = ChapterCanvasGif.getGifData(this.chapterImage);
         boolean decorative_anchor = DecorativeAnchor.isAnchor(this.chapterImage);
         if (text_data.isEmpty() && video_data.isEmpty() && gif_data.isEmpty() && !decorative_anchor) {
+            image.onEditButtonClicked(callback, title);
             return;
         }
 
@@ -89,6 +101,7 @@ public abstract class ChapterImageButtonMixin {
             if (accepted) {
                 EditObjectMessage.sendToServer(this.chapterImage);
             }
+            callback.run();
         }) {
             // 用实际内容和特殊元素类型替换原生的颜色值与“图片”类型
             @Override
@@ -111,7 +124,6 @@ public abstract class ChapterImageButtonMixin {
                 return group.getName();
             }
         }.openGui();
-        callback_info.cancel();
     }
 
     // 在已选辅助点的右键菜单中加入与任务相同的装饰线操作
