@@ -169,5 +169,9 @@
   "quest_enhance.decorative_anchor": "Guide Point",
   "quest_enhance.decorative_anchor.add": "Add Guide Point",
   "pack.quest_enhance.name": "Quest Enhance",
+  "quest_enhance.description_component.keybind.select": "Select Key Binding",
+  "quest_enhance.description_component.keybind.selected": "Selected: %s",
+  "quest_enhance.description_component.keybind.select.multi": "Select Key Bindings (multi-select, confirm after ticking)",
+  "quest_enhance.description_component.keybind.empty": "No key bindings available.",
   "pack.quest_enhance.description": "Quest Enhance configuration resources"
 }

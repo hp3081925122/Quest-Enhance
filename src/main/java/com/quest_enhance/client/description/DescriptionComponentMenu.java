@@ -138,7 +138,15 @@ public final class DescriptionComponentMenu {
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.keybind"),
                         Icons.CONTROLLER,
-                        button -> openTextComponentConfig(parent, editor, TextAction.KEYBIND)
+                        button -> KeybindSelectionScreen.open(parent, null, keybind -> {
+                            if (keybind != null) {
+                                editor.quest_enhance$insert_component(
+                                        Component.translatableWithFallback(keybind, keybind)
+                                                .append(Component.literal(": "))
+                                                .append(Component.keybind(keybind))
+                                );
+                            }
+                        })
                 ),
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.persistent_data"),
@@ -318,14 +326,15 @@ public final class DescriptionComponentMenu {
             return true;
         }
         if (component.getContents() instanceof KeybindContents contents) {
-            openTextComponentConfig(
-                    parent,
-                    TextAction.KEYBIND,
-                    component.getString(),
-                    contents.getName(),
-                    ChapterCanvasText.DEFAULT_FONT,
-                    component_save
-            );
+            KeybindSelectionScreen.openSingle(parent, contents.getName(), keybind -> {
+                if (keybind != null) {
+                    component_save.accept(
+                            Component.translatableWithFallback(keybind, keybind)
+                                    .append(Component.literal(": "))
+                                    .append(Component.keybind(keybind))
+                    );
+                }
+            });
             return true;
         }
 
@@ -412,7 +421,6 @@ public final class DescriptionComponentMenu {
                             .withColor(ChatFormatting.GOLD)
                             .withUnderlined(true)
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, action_value[0])));
-                    case KEYBIND -> Component.keybind(action_value[0]);
                     case PONDER -> Component.literal(display_text[0]).withStyle(Style.EMPTY
                             .withColor(ChatFormatting.AQUA)
                             .withUnderlined(true)
@@ -431,10 +439,8 @@ public final class DescriptionComponentMenu {
         };
 
         // 按组件类型只显示真正需要的配置字段
-        if (action != TextAction.KEYBIND) {
-            group.addString("text", display_text[0], value -> display_text[0] = value, display_text[0], NON_EMPTY)
-                    .setNameKey("quest_enhance.description_component.display_text");
-        }
+        group.addString("text", display_text[0], value -> display_text[0] = value, display_text[0], NON_EMPTY)
+                .setNameKey("quest_enhance.description_component.display_text");
         switch (action) {
             case WEB_LINK -> group.addString(
                     "url",
@@ -487,13 +493,6 @@ public final class DescriptionComponentMenu {
                     action_value[0],
                     COMMAND
             ).setNameKey("quest_enhance.description_component.command_value");
-            case KEYBIND -> group.addString(
-                    "keybind",
-                    action_value[0],
-                    value -> action_value[0] = value,
-                    action_value[0],
-                    TECHNICAL_KEY
-            ).setNameKey("quest_enhance.description_component.keybind_value");
             case PONDER -> {
                 // 只列出 The Ponderer 当前场景索引中实际存在的物品，旧配置仍保留以便修正。
                 List<ResourceLocation> available_items = PonderIntegration.getAvailableItems();
@@ -1012,11 +1011,6 @@ public final class DescriptionComponentMenu {
                 "quest_enhance.description_component.command",
                 "quest_enhance.description_component.default.command",
                 "/help"
-        ),
-        KEYBIND(
-                "quest_enhance.description_component.keybind",
-                "quest_enhance.description_component.default.keybind",
-                "key.jump"
         ),
         PONDER(
                 "quest_enhance.description_component.ponder",

@@ -169,5 +169,9 @@
   "quest_enhance.decorative_anchor": "辅助点",
   "quest_enhance.decorative_anchor.add": "添加辅助点",
   "pack.quest_enhance.name": "Quest Enhance",
+  "quest_enhance.description_component.keybind.select": "选择按键绑定",
+  "quest_enhance.description_component.keybind.selected": "已选择：%s",
+  "quest_enhance.description_component.keybind.select.multi": "选择按键绑定（可多选，勾选后点确认）",
+  "quest_enhance.description_component.keybind.empty": "没有可用的按键绑定。",
   "pack.quest_enhance.description": "Quest Enhance 配置资源"
 }
