@@ -209,13 +209,34 @@ public final class DescriptionComponentMenu {
             return false;
         }
 
-        // 多组件 JSON 可能包含多个独立样式，继续交给 FTB 原编辑器
-        if (component == null || !component.getSiblings().isEmpty()) {
+        // 保存时使用 1.20.1 原版序列化器生成合法组件 JSON
+        Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(edited));
+        if (component == null) {
             return false;
         }
 
-        // 保存时使用 1.20.1 原版序列化器生成合法组件 JSON
-        Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(edited));
+        if (component.getContents() instanceof TranslatableContents translatable_contents
+                && component.getSiblings().size() == 2
+                && ": ".equals(component.getSiblings().get(0).getString())
+                && component.getSiblings().get(1).getContents() instanceof KeybindContents keybind_contents
+                && translatable_contents.getKey().equals(keybind_contents.getName())) {
+            KeybindSelectionScreen.openSingle(parent, keybind_contents.getName(), selected_keybind -> {
+                if (selected_keybind != null) {
+                    component_save.accept(
+                            Component.translatableWithFallback(selected_keybind, selected_keybind)
+                                    .append(Component.literal(": "))
+                                    .append(Component.keybind(selected_keybind))
+                    );
+                }
+            });
+            return true;
+        }
+
+        // 多组件 JSON 可能包含多个独立样式，继续交给 FTB 原编辑器
+        if (!component.getSiblings().isEmpty()) {
+            return false;
+        }
+
         Style style = component.getStyle();
         ClickEvent click_event = style.getClickEvent();
 
