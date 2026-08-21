@@ -54,6 +54,17 @@ public abstract class QuestScreenMixin {
     @Final
     private QuestPanel questPanel;
 
+    // 阻止空画布对象进入 FTB 原生选区，避免原版绘制阶段调用空对象的尺寸方法
+    @Inject(method = "toggleSelected", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$ignore_null_selected_object(
+            Movable movable,
+            CallbackInfo callback_info
+    ) {
+        if (movable == null) {
+            callback_info.cancel();
+        }
+    }
+
     @Unique
     private static final Map<ResourceLocation, Icon> quest_enhance$background_icons = new HashMap<>();
 

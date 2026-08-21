@@ -19,6 +19,7 @@ import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.TaskTypeSelectionScreen;
 import dev.architectury.networking.NetworkManager;
+import dev.ftb.mods.ftbquests.client.ClientQuestFile;
 import dev.ftb.mods.ftblibrary.config.StringConfig;
 import dev.ftb.mods.ftblibrary.config.ui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.icon.Icon;
@@ -42,6 +43,7 @@ import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
+import dev.ftb.mods.ftbquests.quest.TeamData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
@@ -90,6 +92,22 @@ public abstract class QuestPanelMixin {
 
     @Shadow
     protected double questY;
+
+    // 清理已经存在的空选区项，兼容添加装饰线前产生的异常状态
+    @Inject(method = "draw", at = @At("HEAD"))
+    private void quest_enhance$remove_null_selected_objects(
+            GuiGraphics graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        ((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_objects()
+                .removeIf(movable -> movable == null);
+    }
 
     // 按单条前置线设置隐藏、悬停显示或编辑模式专用颜色
     @Redirect(
@@ -358,15 +376,28 @@ public abstract class QuestPanelMixin {
         // 建立任务编号和辅助点 UUID 到当前画布按钮的映射
         Map<String, Widget> node_buttons = new HashMap<>();
         Set<Widget> anchor_buttons = new HashSet<>();
+        Set<String> hidden_task_nodes = new HashSet<>();
+        ClientQuestFile quest_file = ((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_file();
+        boolean editing = quest_file != null && quest_file.canEdit();
+        TeamData team_data = quest_file == null ? null : quest_file.selfTeamData;
         for (Widget widget : ((Panel) (Object) this).getWidgets()) {
             if (!(widget instanceof QuestPositionableButton positionable)) {
                 continue;
             }
             Movable movable = positionable.moveAndDeleteFocus();
             if (movable instanceof Quest quest) {
-                node_buttons.put(DecorativeDependencyLines.questNode(quest.getMovableID()), widget);
+                String node_key = DecorativeDependencyLines.questNode(quest.getMovableID());
+                node_buttons.put(node_key, widget);
+                if (!editing && team_data != null && !quest.isVisible(team_data)) {
+                    hidden_task_nodes.add(node_key);
+                }
             } else if (movable instanceof QuestLink link) {
-                node_buttons.put(DecorativeDependencyLines.questLinkNode(link.getMovableID()), widget);
+                String node_key = DecorativeDependencyLines.questLinkNode(link.getMovableID());
+                node_buttons.put(node_key, widget);
+                if (!editing && team_data != null && !link.isVisible(team_data)) {
+                    hidden_task_nodes.add(node_key);
+                }
             } else if (movable instanceof ChapterImage image) {
                 DecorativeAnchor.nodeKey(image).ifPresent(node_key -> {
                     node_buttons.put(node_key, widget);
@@ -377,6 +408,9 @@ public abstract class QuestPanelMixin {
 
         // 将首个选中的节点作为中心，连接其余所有节点
         for (DecorativeDependencyLines.Line line : DecorativeDependencyLines.get(chapter)) {
+            if (!editing && line.nodes().stream().anyMatch(hidden_task_nodes::contains)) {
+                continue;
+            }
             List<Widget> line_buttons = new ArrayList<>(line.nodes().size());
             for (String node_key : line.nodes()) {
                 Widget widget = node_buttons.get(node_key);

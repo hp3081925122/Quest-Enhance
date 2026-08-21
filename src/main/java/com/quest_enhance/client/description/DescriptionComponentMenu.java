@@ -138,7 +138,15 @@ public final class DescriptionComponentMenu {
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.keybind"),
                         Icons.CONTROLLER,
-                        button -> openTextComponentConfig(parent, editor, TextAction.KEYBIND)
+                        button -> KeybindSelectionScreen.open(parent, null, keybind -> {
+                            if (keybind != null) {
+                                editor.quest_enhance$insert_component(
+                                        Component.translatableWithFallback(keybind, keybind)
+                                                .append(Component.literal(": "))
+                                                .append(Component.keybind(keybind))
+                                );
+                            }
+                        })
                 ),
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.persistent_data"),
@@ -207,16 +215,37 @@ public final class DescriptionComponentMenu {
             return false;
         }
 
-        // 多组件 JSON 可能同时包含普通文字和多个样式，继续交给原版编辑器
-        if (component == null || !component.getSiblings().isEmpty()) {
-            return false;
-        }
-
         // 保存时重新使用当前注册表上下文生成合法的 1.21.1 组件 JSON
         Consumer<Component> component_save = edited -> save.accept(Component.Serializer.toJson(
                 edited,
                 FTBQuestsClient.holderLookup()
         ));
+        if (component == null) {
+            return false;
+        }
+
+        if (component.getContents() instanceof TranslatableContents translatable_contents
+                && component.getSiblings().size() == 2
+                && ": ".equals(component.getSiblings().get(0).getString())
+                && component.getSiblings().get(1).getContents() instanceof KeybindContents keybind_contents
+                && translatable_contents.getKey().equals(keybind_contents.getName())) {
+            KeybindSelectionScreen.openSingle(parent, keybind_contents.getName(), selected_keybind -> {
+                if (selected_keybind != null) {
+                    component_save.accept(
+                            Component.translatableWithFallback(selected_keybind, selected_keybind)
+                                    .append(Component.literal(": "))
+                                    .append(Component.keybind(selected_keybind))
+                    );
+                }
+            });
+            return true;
+        }
+
+        // 多组件 JSON 可能同时包含普通文字和多个样式，继续交给原版编辑器
+        if (!component.getSiblings().isEmpty()) {
+            return false;
+        }
+
         Optional<PlayerPersistentDataDescription.Placeholder> persistent_data = PlayerPersistentDataDescription.get(component);
         if (persistent_data.isPresent()) {
             openPersistentDataConfig(
@@ -326,14 +355,15 @@ public final class DescriptionComponentMenu {
             return true;
         }
         if (component.getContents() instanceof KeybindContents contents) {
-            openTextComponentConfig(
-                    parent,
-                    TextAction.KEYBIND,
-                    component.getString(),
-                    contents.getName(),
-                    ChapterCanvasText.DEFAULT_FONT,
-                    component_save
-            );
+            KeybindSelectionScreen.openSingle(parent, contents.getName(), keybind -> {
+                if (keybind != null) {
+                    component_save.accept(
+                            Component.translatableWithFallback(keybind, keybind)
+                                    .append(Component.literal(": "))
+                                    .append(Component.keybind(keybind))
+                    );
+                }
+            });
             return true;
         }
 
@@ -431,7 +461,6 @@ public final class DescriptionComponentMenu {
                             .withColor(ChatFormatting.GOLD)
                             .withUnderlined(true)
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, action_value[0])));
-                    case KEYBIND -> Component.keybind(action_value[0]);
                     case PONDER -> Component.literal(display_text[0]).withStyle(Style.EMPTY
                             .withColor(ChatFormatting.AQUA)
                             .withUnderlined(true)
@@ -451,11 +480,8 @@ public final class DescriptionComponentMenu {
             }
         };
 
-        // 按键绑定只需要技术键，其余组件均允许设置显示文字
-        if (action != TextAction.KEYBIND) {
-            group.addString("text", display_text[0], value -> display_text[0] = value, display_text[0], NON_EMPTY)
-                    .setNameKey("quest_enhance.description_component.display_text");
-        }
+        group.addString("text", display_text[0], value -> display_text[0] = value, display_text[0], NON_EMPTY)
+                .setNameKey("quest_enhance.description_component.display_text");
 
         // 每种动作只展示真正需要的额外配置字段
         switch (action) {
@@ -511,13 +537,6 @@ public final class DescriptionComponentMenu {
                     action_value[0],
                     COMMAND
             ).setNameKey("quest_enhance.description_component.command_value");
-            case KEYBIND -> group.addString(
-                    "keybind",
-                    action_value[0],
-                    value -> action_value[0] = value,
-                    action_value[0],
-                    TECHNICAL_KEY
-            ).setNameKey("quest_enhance.description_component.keybind_value");
             case PONDER -> {
                 group.add(
                         "item_id",
@@ -1010,11 +1029,6 @@ public final class DescriptionComponentMenu {
                 "quest_enhance.description_component.command",
                 "quest_enhance.description_component.default.command",
                 "/help"
-        ),
-        KEYBIND(
-                "quest_enhance.description_component.keybind",
-                "quest_enhance.description_component.default.keybind",
-                "key.jump"
         ),
         PONDER(
                 "quest_enhance.description_component.ponder",

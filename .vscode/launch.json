@@ -9,7 +9,7 @@
         "group": "Mod Development - quest_enhance",
         "order": 0
       },
-      "projectName": "quest_enhance",
+      "projectName": "quest_enhance-1.21.1-neoforge-Quest Enhance",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
         "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\clientRunProgramArgs.txt"
@@ -31,7 +31,7 @@
         "group": "Mod Development - quest_enhance",
         "order": 1
       },
-      "projectName": "quest_enhance",
+      "projectName": "quest_enhance-1.21.1-neoforge-Quest Enhance",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
         "@E:\\模组\\发cf的模组\\Quest Enhance\\1.21.1-neoforge-Quest Enhance\\build\\moddev\\serverRunProgramArgs.txt"
