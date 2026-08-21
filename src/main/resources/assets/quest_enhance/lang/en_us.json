@@ -159,6 +159,7 @@
   "quest_enhance.multi_copy.count": "Copied %s quests or images",
   "quest_enhance.multi_copy.unsupported": "Multi-selection copy only supports quests and images.",
   "quest_enhance.bulk_edit": "Bulk Edit",
+  "quest_enhance.bulk_add_task": "Bulk Add Task",
   "quest_enhance.decorative_line.add": "Add Decorative Line",
   "quest_enhance.decorative_line.remove": "Remove Decorative Line",
   "quest_enhance.dependency_line.edit": "Edit Prerequisite Lines",

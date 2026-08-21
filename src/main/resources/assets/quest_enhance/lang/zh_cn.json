@@ -159,6 +159,7 @@
   "quest_enhance.multi_copy.count": "已复制 %s 个任务或图片",
   "quest_enhance.multi_copy.unsupported": "多选复制仅支持任务和图片。",
   "quest_enhance.bulk_edit": "批量编辑",
+  "quest_enhance.bulk_add_task": "批量添加任务",
   "quest_enhance.decorative_line.add": "添加装饰线",
   "quest_enhance.decorative_line.remove": "取消装饰线",
   "quest_enhance.dependency_line.edit": "编辑前置线",

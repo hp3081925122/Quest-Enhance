@@ -21,6 +21,7 @@
     "ChapterPanelMixin",
     "ImageIconMixin",
     "ImageResourceConfigMixin",
+    "AdvancementTaskAccessor",
     "KillTaskAccessor",
     "MultilineTextEditorScreenMixin",
     "MultilineTextEditorToolbarMixin",

@@ -7,9 +7,14 @@ import dev.ftb.mods.ftblibrary.config.ui.EditConfigScreen;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
+import dev.ftb.mods.ftbquests.net.CreateObjectMessage;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
+import dev.ftb.mods.ftbquests.quest.task.Task;
+import dev.ftb.mods.ftbquests.quest.task.TaskType;
+import dev.ftb.mods.ftbquests.quest.task.TaskTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -38,7 +43,49 @@ public final class BulkQuestEdit {
                 Icons.SETTINGS,
                 button -> open(screen, quests)
         ));
+        context_menu.add(1, new ContextMenuItem(
+                Component.translatable("quest_enhance.bulk_add_task"),
+                Icons.ADD,
+                button -> openTaskTypeSelection(screen, quests)
+        ));
         return context_menu;
+    }
+
+    // 打开与任务详情加号相同的任务类型选择界面。
+    private static void openTaskTypeSelection(QuestScreen screen, List<Quest> quests) {
+        List<ContextMenuItem> task_items = new ArrayList<>();
+        for (TaskType task_type : TaskTypes.TYPES.values()) {
+            task_items.add(new ContextMenuItem(
+                    task_type.getDisplayName(),
+                    task_type.getIconSupplier(),
+                    button -> task_type.getGuiProvider().openCreationGui(
+                            button.getParent(),
+                            quests.get(0),
+                            task -> addTaskToAll(screen, quests, task)
+                    )
+            ));
+        }
+        TaskTypeSelectionScreen.open(screen.questPanel, task_items);
+    }
+
+    // 将配置完成的任务复制到全部选中的任务节点并交给服务端创建。
+    private static void addTaskToAll(QuestScreen screen, List<Quest> quests, Task source_task) {
+        for (Quest quest : quests) {
+            Task copied_task = QuestObjectBase.copy(
+                    source_task,
+                    () -> TaskType.createTask(
+                            0L,
+                            quest,
+                            source_task.getType().getTypeId().toString()
+                    )
+            );
+            if (copied_task != null) {
+                CompoundTag extra = new CompoundTag();
+                extra.putString("type", copied_task.getType().getTypeForNBT());
+                new CreateObjectMessage(copied_task, extra).sendToServer();
+            }
+        }
+        screen.refreshQuestPanel();
     }
 
     // 使用首个任务的原生完整属性页，并在确认后将实际变更同步给其余任务。
