@@ -53,4 +53,3 @@ public final class PersistentDataCommand {
         return players.size();
     }
 }
-

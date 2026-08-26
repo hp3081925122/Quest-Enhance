@@ -604,4 +604,3 @@ public final class QuestDescriptionComponents {
         return Math.max(minimum, Math.min(maximum, value));
     }
 }
-

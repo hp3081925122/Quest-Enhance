@@ -165,5 +165,3 @@ public final class KeybindSelectionScreen extends AbstractButtonListScreen {
         }
     }
 }
-
-
