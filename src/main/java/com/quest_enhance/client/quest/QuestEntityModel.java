@@ -24,7 +24,13 @@ public final class QuestEntityModel {
     // 从 FTB 原有图标物品的自定义 NBT 中读取模型实体注册名
     public static Optional<Identifier> getEntityModel(ItemStack icon_stack) {
         CompoundTag tag = icon_stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return Identifier.read(tag.getStringOr(ENTITY_MODEL_TAG, "")).result();
+        String entity_model_id = tag.getStringOr(ENTITY_MODEL_TAG, "");
+        if (entity_model_id.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Identifier.read(entity_model_id).result()
+                .filter(identifier -> !identifier.getPath().isEmpty());
     }
 
     // 创建可由 FTB 原生任务格式保存和同步的模型占位图标物品

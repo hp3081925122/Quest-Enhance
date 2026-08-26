@@ -11,6 +11,7 @@ import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.Chapter;
+import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObject;
 import net.minecraft.network.chat.Component;
@@ -29,8 +30,13 @@ public final class HiddenDependencyLineMenus {
     public static List<ContextMenuItem> append(
             List<ContextMenuItem> context_menu,
             QuestScreen quest_screen,
-            Quest source
+            Movable source_object
     ) {
+        // 链接任务拥有独立画布身份，隐藏线设置仍只针对真实任务之间的原生前置关系
+        if (!(source_object instanceof Quest source)) {
+            return context_menu;
+        }
+
         if (!((QuestScreenAccessor) (Object) quest_screen).quest_enhance$get_file().canEdit()
                 || quest_screen.isViewingQuest()) {
             return context_menu;
@@ -109,8 +115,10 @@ public final class HiddenDependencyLineMenus {
             Quest source,
             Quest dependency
     ) {
+        String source_node = HiddenDependencyLines.nodeKey(source);
+        String dependency_node = HiddenDependencyLines.nodeKey(dependency);
         HiddenDependencyLines.Line existing = HiddenDependencyLines
-                .find(chapter, source.getMovableID(), dependency.getMovableID())
+                .find(chapter, source_node, dependency_node)
                 .orElse(null);
         boolean[] hidden = {existing != null};
         boolean[] reveal_on_hover = {existing != null && existing.reveal_on_hover()};
@@ -119,8 +127,8 @@ public final class HiddenDependencyLineMenus {
             if (accepted) {
                 HiddenDependencyLines.set(
                         chapter,
-                        source.getMovableID(),
-                        dependency.getMovableID(),
+                        source_node,
+                        dependency_node,
                         hidden[0],
                         reveal_on_hover[0]
                 );

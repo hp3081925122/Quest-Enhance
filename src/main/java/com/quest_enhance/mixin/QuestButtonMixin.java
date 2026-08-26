@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.canvas.DecorativeLineMenus;
 import com.quest_enhance.client.canvas.HiddenDependencyLineMenus;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
@@ -7,7 +8,11 @@ import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
+import com.quest_enhance.client.quest.BulkQuestEdit;
+import com.quest_enhance.client.quest.QuestBackgroundMenus;
+import com.quest_enhance.common.QuestBackground;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.client.icon.IconHelper;
 import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import dev.ftb.mods.ftblibrary.client.gui.input.MouseButton;
@@ -49,6 +54,12 @@ public abstract class QuestButtonMixin {
 
     @Unique
     private KillTaskEntityPreview quest_enhance$entity_preview;
+
+    @Unique
+    private boolean quest_enhance$background_render_logged;
+
+    @Unique
+    private boolean quest_enhance$entity_model_render_logged;
 
     // 阻止原图标绘制，为手动模型或自动击杀任务模型保留节点中央区域
     @Redirect(
@@ -134,8 +145,12 @@ public abstract class QuestButtonMixin {
         Movable clicked_object = (Object) this instanceof QuestLinkButton
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
+        BulkQuestEdit.append(context_menu, this.questScreen);
+        if (!((Object) this instanceof QuestLinkButton)) {
+            QuestBackgroundMenus.appendBulk(context_menu, this.questScreen);
+        }
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
-        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, this.quest);
+        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
     }
 
     // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
@@ -155,10 +170,57 @@ public abstract class QuestButtonMixin {
         List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
                 new java.util.ArrayList<>(),
                 quest_screen,
-                this.quest
+                (Object) this instanceof QuestLinkButton
+                        ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
+                        : this.quest
         );
+        if (!((Object) this instanceof QuestLinkButton)) {
+            appended_menu.add(0, QuestBackgroundMenus.createSingle(this.quest, quest_screen));
+            appended_menu.add(1, QuestBackgroundMenus.createViewSingle(this.quest, quest_screen));
+        }
         context_menu.insertAtTop(appended_menu);
         return context_menu;
+    }
+
+    // 在节点底色绘制完成后、轮廓和图标绘制前绘制普通任务背景图片
+    @Inject(
+            method = "draw",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftblibrary/client/icon/IconHelper;renderIcon(Ldev/ftb/mods/ftblibrary/icon/Icon;Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIII)V",
+                    ordinal = 1,
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void quest_enhance$draw_quest_background(
+            GuiGraphicsExtractor graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        if ((Object) this instanceof QuestLinkButton) {
+            return;
+        }
+
+        QuestBackground.get(this.quest).ifPresent(resource_id -> {
+            Icon<?> background_icon = Icon.getIcon(resource_id);
+            if (!this.quest_enhance$background_render_logged) {
+                this.quest_enhance$background_render_logged = true;
+                QuestEnhance.LOGGER.debug(
+                        "Rendering quest background: quest={}, resource={}, iconType={}, empty={}",
+                        this.quest.getId(),
+                        resource_id,
+                        background_icon.getClass().getSimpleName(),
+                        background_icon.isEmpty()
+                );
+            }
+            if (!background_icon.isEmpty()) {
+                IconHelper.renderIcon(background_icon, graphics, x, y, width, height);
+            }
+        });
     }
 
     // 在节点背景之后、状态覆盖图标之前绘制实体模型
@@ -194,7 +256,7 @@ public abstract class QuestButtonMixin {
         ));
         int model_x = x + (width - model_size) / 2;
         int model_y = y + (height - model_size) / 2;
-        this.quest_enhance$entity_preview.render(
+        boolean rendered = this.quest_enhance$entity_preview.render(
                 entity_id,
                 graphics,
                 model_x,
@@ -202,6 +264,16 @@ public abstract class QuestButtonMixin {
                 model_size,
                 model_size
         );
+        if (!this.quest_enhance$entity_model_render_logged) {
+            this.quest_enhance$entity_model_render_logged = true;
+            QuestEnhance.LOGGER.debug(
+                    "Rendered quest entity model: quest={}, entity={}, rendered={}, taskCount={}",
+                    this.quest.getId(),
+                    entity_id,
+                    rendered,
+                    this.quest.getTasks().size()
+            );
+        }
     }
 
     // 手动模型优先，普通自定义图标次之，最后使用单个击杀任务的目标实体
@@ -216,13 +288,23 @@ public abstract class QuestButtonMixin {
         if (explicit_model != null) {
             return explicit_model;
         }
-        if ((!raw_icon.isEmpty() && !QuestVideoData.isPlaceholder(raw_icon))
-                || this.quest.getTasks().size() != 1) {
+        if (!raw_icon.isEmpty() && !QuestVideoData.isPlaceholder(raw_icon)) {
             return null;
         }
 
-        return this.quest.getTasks().iterator().next() instanceof KillTask kill_task
-                ? ((KillTaskAccessor) kill_task).quest_enhance$get_entity()
-                : null;
+        // 任务可以同时包含勾选任务和一个击杀任务，仍然使用唯一击杀任务的实体模型
+        KillTask kill_task = null;
+        for (Object task : this.quest.getTasks()) {
+            if (!(task instanceof KillTask candidate)) {
+                continue;
+            }
+            if (kill_task != null) {
+                return null;
+            }
+            kill_task = candidate;
+        }
+        return kill_task == null
+                ? null
+                : ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
     }
 }

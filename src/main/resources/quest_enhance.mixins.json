@@ -4,13 +4,24 @@
   "package": "com.quest_enhance.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AdvancementTaskAccessor",
+    "BaseQuestFileAccessor",
+    "BaseQuestFileMixin",
+    "ChapterAccessor",
     "ChapterImageAccessor",
     "ChapterMixin",
-    "QuestObjectBaseMixin"
+    "QuestMixin",
+    "QuestObjectAccessor",
+    "QuestObjectBaseMixin",
+    "TaskCompletionMixin"
   ],
   "client": [
+    "ChapterButtonMixin",
+    "ChapterPanelListButtonAccessor",
+    "ChapterPanelMixin",
     "ChapterImageButtonMixin",
     "ChapterImageMixin",
+    "ImageIconMixin",
     "ImageResourceConfigMixin",
     "KillTaskAccessor",
     "MultilineTextEditorScreenMixin",
@@ -28,6 +39,8 @@
     "TaskButtonMixin",
     "TextFieldAccessor",
     "TextFieldMixin",
+    "ModpackButtonMixin",
+    "ViewQuestPanelBackgroundMixin",
     "ViewQuestPanelMixin"
   ],
   "injectors": {

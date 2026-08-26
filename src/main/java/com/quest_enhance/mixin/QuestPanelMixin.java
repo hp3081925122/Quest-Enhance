@@ -3,6 +3,7 @@ package com.quest_enhance.mixin;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.DecorativeDependencyLines;
 import com.quest_enhance.HiddenDependencyLines;
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.canvas.ChapterCanvasGif;
 import com.quest_enhance.client.canvas.ChapterCanvasText;
 import com.quest_enhance.client.canvas.ChapterCanvasVideo;
@@ -11,12 +12,14 @@ import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.TaskTypeSelectionScreen;
+import com.quest_enhance.common.ChapterBackground;
 import dev.ftb.mods.ftblibrary.client.config.editable.EditableString;
 import dev.ftb.mods.ftblibrary.client.config.gui.EditStringConfigOverlay;
 import dev.ftb.mods.ftblibrary.platform.network.Play2ServerNetworking;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.icon.ImageIcon;
 import dev.ftb.mods.ftblibrary.icon.Icons;
+import dev.ftb.mods.ftblibrary.client.icon.IconHelper;
 import dev.ftb.mods.ftblibrary.client.gui.widget.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.client.gui.widget.Panel;
 import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
@@ -42,6 +45,7 @@ import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.state.gui.BlitRenderState;
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fStack;
@@ -79,6 +83,15 @@ public abstract class QuestPanelMixin {
     private static final ImageIcon quest_enhance$DECORATIVE_LINE_TEXTURE =
             (ImageIcon) Icon.getIcon("quest_enhance:textures/gui/decorative_line.png");
 
+    @Unique
+    private static final Map<Identifier, Icon<?>> quest_enhance$chapter_background_icons = new HashMap<>();
+
+    @Unique
+    private String quest_enhance$last_decorative_line_debug;
+
+    @Unique
+    private String quest_enhance$last_unresolved_line_debug;
+
     @Shadow
     @Final
     private QuestScreen questScreen;
@@ -88,6 +101,53 @@ public abstract class QuestPanelMixin {
 
     @Shadow
     protected double questY;
+
+    // 在章节画布节点绘制前绘制当前章节的独立背景
+    @Inject(method = "draw", at = @At("HEAD"))
+    private void quest_enhance$draw_chapter_background(
+            GuiGraphicsExtractor graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        QuestScreenAccessor screen_accessor = (QuestScreenAccessor) (Object) this.questScreen;
+        List<Movable> selected_objects = screen_accessor.quest_enhance$get_selected_objects();
+        int selected_count_before_cleanup = selected_objects.size();
+        selected_objects.removeIf(movable -> movable == null);
+        if (selected_count_before_cleanup != selected_objects.size()) {
+            QuestEnhance.LOGGER.debug(
+                    "Removed null quest canvas selections: before={}, after={}",
+                    selected_count_before_cleanup,
+                    selected_objects.size()
+            );
+        }
+
+        Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_chapter();
+        if (chapter == null) {
+            return;
+        }
+
+        // 缓存图标对象并将背景铺满任务节点画布区域
+        ChapterBackground.get(chapter).ifPresent(resource_id -> {
+            Icon<?> background_icon = quest_enhance$chapter_background_icons.computeIfAbsent(
+                    resource_id,
+                    Icon::getIcon
+            );
+            if (!background_icon.isEmpty()) {
+                IconHelper.renderIcon(background_icon, graphics, x, y, width, height);
+            }
+        });
+
+        // 在 FTB 的画布滚动偏移中恢复原生前置线和装饰折线绘制
+        ((Panel) (Object) this).doWithScrollOffset(() -> {
+            ((QuestPanel) (Object) this).drawOffsetBackground(graphics, theme, x, y, width, height);
+            quest_enhance$render_decorative_dependency_line(graphics, theme, x, y, width, height);
+        });
+    }
 
     // 按单条前置线设置隐藏、悬停显示或编辑模式专用颜色
     @Redirect(
@@ -130,7 +190,7 @@ public abstract class QuestPanelMixin {
         Quest source_quest = ((QuestButtonAccessor) (Object) source_button).quest_enhance$get_quest();
         Quest dependency_quest = ((QuestButtonAccessor) (Object) dependency).quest_enhance$get_quest();
         HiddenDependencyLines.Line line = HiddenDependencyLines
-                .find(chapter, source_quest.getMovableID(), dependency_quest.getMovableID())
+                .find(chapter, HiddenDependencyLines.nodeKey(source_quest), HiddenDependencyLines.nodeKey(dependency_quest))
                 .orElse(null);
         if (line == null) {
             ((QuestPanelAccessor) panel).quest_enhance$render_connection(
@@ -331,15 +391,14 @@ public abstract class QuestPanelMixin {
     }
 
     // 在任务按钮绘制前连接任务和辅助点组成的有序折线路径
-    @Inject(method = "drawOffsetBackground", at = @At("TAIL"))
-    private void quest_enhance$draw_decorative_dependency_line(
+    @Unique
+    private void quest_enhance$render_decorative_dependency_line(
             GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
             int y,
             int width,
-            int height,
-            CallbackInfo callback_info
+            int height
     ) {
         Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen)
                 .quest_enhance$get_selected_chapter();
@@ -368,6 +427,18 @@ public abstract class QuestPanelMixin {
         }
 
         // 将首个选中的节点作为中心，连接其余所有节点
+        String line_debug = chapter.getId() + ":" + DecorativeDependencyLines.get(chapter).size()
+                + ":" + node_buttons.size() + ":" + anchor_buttons.size();
+        if (!line_debug.equals(this.quest_enhance$last_decorative_line_debug)) {
+            this.quest_enhance$last_decorative_line_debug = line_debug;
+            QuestEnhance.LOGGER.debug(
+                    "Prepared decorative line render: chapter={}, lines={}, nodes={}, anchors={}",
+                    chapter.getId(),
+                    DecorativeDependencyLines.get(chapter).size(),
+                    node_buttons.size(),
+                    anchor_buttons.size()
+            );
+        }
         for (DecorativeDependencyLines.Line line : DecorativeDependencyLines.get(chapter)) {
             List<Widget> line_buttons = new ArrayList<>(line.nodes().size());
             for (String node_key : line.nodes()) {
@@ -377,6 +448,16 @@ public abstract class QuestPanelMixin {
                 }
             }
             if (line_buttons.size() < 2) {
+                String unresolved_debug = chapter.getId() + ":" + line.nodes() + ":" + line_buttons.size();
+                if (!unresolved_debug.equals(this.quest_enhance$last_unresolved_line_debug)) {
+                    this.quest_enhance$last_unresolved_line_debug = unresolved_debug;
+                    QuestEnhance.LOGGER.debug(
+                            "Skipped decorative line with unresolved nodes: chapter={}, lineNodes={}, resolved={}",
+                            chapter.getId(),
+                            line.nodes(),
+                            line_buttons.size()
+                    );
+                }
                 continue;
             }
 

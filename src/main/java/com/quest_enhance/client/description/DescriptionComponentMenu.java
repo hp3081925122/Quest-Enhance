@@ -1,6 +1,8 @@
 package com.quest_enhance.client.description;
 
 import com.quest_enhance.client.canvas.ChapterCanvasText;
+import com.quest_enhance.common.description.PlayerPersistentDataDescription;
+import com.quest_enhance.common.description.QuestDescriptionComponents;
 import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
@@ -135,7 +137,25 @@ public final class DescriptionComponentMenu {
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.keybind"),
                         Icons.CONTROLLER,
-                        button -> openTextComponentConfig(parent, editor, TextAction.KEYBIND)
+                        button -> KeybindSelectionScreen.open(parent, null, keybind -> {
+                            if (keybind != null) {
+                                editor.quest_enhance$insert_component(
+                                        Component.translatableWithFallback(keybind, keybind)
+                                                .append(Component.literal(": "))
+                                                .append(Component.keybind(keybind))
+                                );
+                            }
+                        })
+                ),
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.description_component.persistent_data"),
+                        Icons.INFO,
+                        button -> openPersistentDataConfig(
+                                parent,
+                                "example.key",
+                                false,
+                                markup -> editor.quest_enhance$insert_at_end_of_line("\n" + markup)
+                        )
                 ),
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.table"),
@@ -200,6 +220,15 @@ public final class DescriptionComponentMenu {
         // 多组件 JSON 可能同时包含普通文字和多个样式，继续交给原版编辑器
         if (component == null || !component.getSiblings().isEmpty()) {
             return false;
+        }
+
+        // 识别玩家持久化数据占位组件并恢复专用配置页
+        Optional<PlayerPersistentDataDescription.Placeholder> persistent_data =
+                PlayerPersistentDataDescription.get(component);
+        if (persistent_data.isPresent()) {
+            PlayerPersistentDataDescription.Placeholder placeholder = persistent_data.get();
+            openPersistentDataConfig(parent, placeholder.key(), placeholder.i18n(), save);
+            return true;
         }
 
         // 保存时重新使用当前注册表上下文生成合法的 1.21.1 组件 JSON
@@ -289,12 +318,9 @@ public final class DescriptionComponentMenu {
             return true;
         }
         if (component.getContents() instanceof KeybindContents contents) {
-            openTextComponentConfig(
+            openKeybindSelector(
                     parent,
-                    TextAction.KEYBIND,
-                    component.getString(),
                     contents.getName(),
-                    ChapterCanvasText.DEFAULT_FONT,
                     component_save
             );
             return true;
@@ -326,6 +352,51 @@ public final class DescriptionComponentMenu {
             return true;
         }
         return false;
+    }
+
+    // 使用专用列表选择器编辑按键绑定，避免手写技术键造成错误
+    private static void openKeybindSelector(
+            Panel parent,
+            String current_keybind,
+            Consumer<Component> save
+    ) {
+        KeybindSelectionScreen.openSingle(parent, current_keybind, keybind -> save.accept(Component.keybind(keybind)));
+    }
+
+    // 配置玩家持久化数据占位组件的键名和翻译模式
+    private static void openPersistentDataConfig(
+            Panel parent,
+            String initial_key,
+            boolean initial_i18n,
+            Consumer<String> save
+    ) {
+        String[] key = {initial_key};
+        boolean[] i18n = {initial_i18n};
+        EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
+            if (accepted && PlayerPersistentDataDescription.isValidKey(key[0])) {
+                save.accept(QuestDescriptionComponents.playerPersistentData(key[0], i18n[0]));
+            }
+            parent.run();
+        }) {
+            @Override
+            public Component getName() {
+                return Component.translatable("quest_enhance.description_component.persistent_data");
+            }
+        };
+        group.addString(
+                "key",
+                key[0],
+                value -> key[0] = value,
+                key[0],
+                PlayerPersistentDataDescription.DATA_KEY
+        ).setNameKey("quest_enhance.description_component.persistent_data.key");
+        group.addBool(
+                "i18n",
+                i18n[0],
+                value -> i18n[0] = value,
+                false
+        ).setNameKey("quest_enhance.description_component.persistent_data.i18n");
+        new EditConfigScreen(group).setAutoclose(true).openGui();
     }
 
     // 根据所选类型配置显示文字与动作值，再生成原版文字组件

@@ -21,6 +21,10 @@ import net.minecraft.resources.Identifier;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.zip.InflaterInputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -239,8 +243,18 @@ public final class QuestDescriptionTable {
     // 解码并校验表格尺寸、颜色和单元格内容
     private static Optional<TableData> decode(String encoded) {
         try {
-            String json_text = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
-            JsonObject json = JsonParser.parseString(json_text).getAsJsonObject();
+            byte[] encoded_data = Base64.getUrlDecoder().decode(encoded);
+            String json_text = new String(encoded_data, StandardCharsets.UTF_8);
+            JsonObject json;
+            try {
+                json = JsonParser.parseString(json_text).getAsJsonObject();
+            } catch (RuntimeException plain_json_exception) {
+                try (InflaterInputStream inflater = new InflaterInputStream(new ByteArrayInputStream(encoded_data));
+                     ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                    inflater.transferTo(output);
+                    json = JsonParser.parseString(output.toString(StandardCharsets.UTF_8)).getAsJsonObject();
+                }
+            }
             int columns = json.get("columns").getAsInt();
             if (columns < 1 || columns > MAX_COLUMNS) {
                 return Optional.empty();
@@ -283,7 +297,7 @@ public final class QuestDescriptionTable {
                     Color4I.rgba(json.get("cell_color").getAsInt()),
                     Color4I.rgba(json.get("text_color").getAsInt())
             ));
-        } catch (RuntimeException exception) {
+        } catch (IOException | RuntimeException exception) {
             return Optional.empty();
         }
     }

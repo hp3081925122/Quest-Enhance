@@ -27,25 +27,38 @@ public final class DecorativeAnchor {
 
     // 判断章节图片是否是装饰线辅助点
     public static boolean isAnchor(ChapterImage image) {
-        return ChapterImageClickData.get(image).startsWith(PREFIX);
+        String click_data = ChapterImageClickData.get(image);
+        return click_data.startsWith(PREFIX) || isLegacyAnchor(image, click_data);
     }
 
     // 读取辅助点对应的装饰线节点键
     public static Optional<String> nodeKey(ChapterImage image) {
-        if (!isAnchor(image)) {
+        String click_data = ChapterImageClickData.get(image);
+        if (click_data.startsWith(PREFIX)) {
+            String id = click_data.substring(PREFIX.length());
+            try {
+                UUID.fromString(id);
+                return Optional.of("a:" + id);
+            } catch (IllegalArgumentException exception) {
+                return Optional.empty();
+            }
+        }
+        if (!isLegacyAnchor(image, click_data)) {
             return Optional.empty();
         }
-        String id = ChapterImageClickData.get(image).substring(PREFIX.length());
-        try {
-            UUID.fromString(id);
-            return Optional.of("a:" + id);
-        } catch (IllegalArgumentException exception) {
-            return Optional.empty();
-        }
+        return Optional.of("a:legacy:" + Long.toUnsignedString(image.getId(), 16));
     }
 
     // 复制辅助点时生成新编号，避免两个图片共享同一个连线节点
     public static void assignNewId(ChapterImage image) {
         ChapterImageClickData.set(image, PREFIX + UUID.randomUUID());
+    }
+
+    // 识别当前 26.1.2 已保存但丢失内部标记的旧辅助点
+    private static boolean isLegacyAnchor(ChapterImage image, String click_data) {
+        return click_data.isBlank()
+                && image.getImage().isEmpty()
+                && Math.abs(image.getWidth() - 0.4D) < 0.0001D
+                && Math.abs(image.getHeight() - 0.4D) < 0.0001D;
     }
 }

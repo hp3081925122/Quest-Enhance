@@ -21,6 +21,7 @@ import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.net.EditObjectMessage;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.QuestShape;
+import dev.ftb.mods.ftbquests.quest.theme.property.ThemeProperties;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
@@ -59,6 +60,9 @@ public abstract class ChapterImageButtonMixin {
                 || ChapterCanvasVideo.getVideoData(this.chapterImage).isPresent()
                 || ChapterCanvasGif.getGifData(this.chapterImage).isPresent();
     }
+
+    @Unique
+    private boolean quest_enhance$anchor_render_logged;
 
     // 新版 FTB 会忽略无点击动作的章节图片，允许特殊画布元素接收鼠标命中
     // 拦截新版图片编辑操作，为特殊画布元素打开对应属性页
@@ -197,9 +201,19 @@ public abstract class ChapterImageButtonMixin {
             return;
         }
 
-        // 辅助点始终显示，并使用无任务图标的原生圆形外观
+        // 辅助点复用普通任务节点的形状，并在右上角显示缩小的完成勾选标记
         if (decorative_anchor) {
             QuestScreenAccessor screen = (QuestScreenAccessor) (Object) this.questScreen;
+            if (!this.quest_enhance$anchor_render_logged) {
+                this.quest_enhance$anchor_render_logged = true;
+                QuestEnhance.LOGGER.debug(
+                        "Rendering decorative anchor: id={}, width={}, height={}, clickData={}",
+                        this.chapterImage.getId(),
+                        this.chapterImage.getWidth(),
+                        this.chapterImage.getHeight(),
+                        com.quest_enhance.client.canvas.ChapterImageClickData.get(this.chapterImage)
+                );
+            }
             QuestShape circle = QuestShape.get("circle");
             boolean selected = screen.quest_enhance$get_file().canEdit()
                     && screen.quest_enhance$get_selected_objects().contains(this.chapterImage);
@@ -212,6 +226,20 @@ public abstract class ChapterImageButtonMixin {
                 int selection_alpha = (int) (190.0 + Math.sin(System.currentTimeMillis() * 0.003) * 50.0);
                 IconHelper.renderIcon(circle.getOutline().withColor(Color4I.WHITE.withAlpha(selection_alpha)), graphics, x, y, width, height);
                 IconHelper.renderIcon(circle.getBackground().withColor(Color4I.WHITE.withAlpha(selection_alpha)), graphics, x, y, width, height);
+            }
+
+            // 使用 FTB Quests 普通任务节点的右上角勾选图标
+            Icon check_icon = ThemeProperties.CHECK_ICON.get();
+            if (!check_icon.isEmpty()) {
+                int check_size = Math.max(3, Math.min(width, height) * 3 / 8);
+                IconHelper.renderIcon(
+                        check_icon,
+                        graphics,
+                        x + width - check_size,
+                        y,
+                        check_size,
+                        check_size
+                );
             }
             callback_info.cancel();
             return;
