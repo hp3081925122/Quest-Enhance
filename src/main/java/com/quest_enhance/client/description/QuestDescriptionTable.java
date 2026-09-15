@@ -55,7 +55,7 @@ public final class QuestDescriptionTable {
                         List.of("内容 4", "内容 5", "内容 6")
                 ),
                 true,
-                TextAlignment.LEFT,
+                TextAlignment.CENTER,
                 0,
                 18,
                 1,
@@ -670,14 +670,14 @@ public final class QuestDescriptionTable {
             return this.serialized_name;
         }
 
-        // 无效值回退到靠左，避免损坏整张表格
+        // 无效值回退到居中，避免损坏整张表格
         public static TextAlignment fromSerialized(String value) {
             for (TextAlignment alignment : values()) {
                 if (alignment.serialized_name.equals(value)) {
                     return alignment;
                 }
             }
-            return LEFT;
+            return CENTER;
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.client.quest.ChapterPrerequisiteMenus;
 import com.quest_enhance.common.ChapterBackground;
 import dev.ftb.mods.ftblibrary.config.ImageResourceConfig;
 import dev.ftb.mods.ftblibrary.config.ui.resource.SelectImageResourceScreen;
@@ -42,34 +43,37 @@ public abstract class ChapterButtonMixin {
             BaseScreen screen
     ) {
         // 使用 FTB 图片资源选择器，选择结果由章节数据保存并同步到服务端
-        context_menu_builder.insertAtTop(List.of(new ContextMenuItem(
-                Component.translatable("quest_enhance.chapter_background"),
-                Icons.ART,
-                button -> {
-                    ImageResourceConfig config = new ImageResourceConfig();
-                    config.withAllowEmpty(true);
-                    config.setCurrentValue(
-                            ChapterBackground.get(this.chapter).orElse(ImageResourceConfig.NONE)
-                    );
-                    new SelectImageResourceScreen(config, changed -> {
-                        // FTB 回调参数表示资源值是否发生变化，而不是是否点击确认
-                        if (changed) {
-                            ResourceLocation resource_location = config.getValue();
-                            ChapterBackground.set(
-                                    this.chapter,
-                                    ImageResourceConfig.NONE.equals(resource_location) ? null : resource_location
+        context_menu_builder.insertAtTop(List.of(
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.chapter_background"),
+                        Icons.ART,
+                        button -> {
+                            ImageResourceConfig config = new ImageResourceConfig();
+                            config.withAllowEmpty(true);
+                            config.setCurrentValue(
+                                    ChapterBackground.get(this.chapter).orElse(ImageResourceConfig.NONE)
                             );
-                            EditObjectMessage.sendToServer(this.chapter);
-                            ((QuestScreen) screen).refreshQuestPanel();
-                        }
+                            new SelectImageResourceScreen(config, changed -> {
+                                // FTB 回调参数表示资源值是否发生变化，而不是是否点击确认
+                                if (changed) {
+                                    ResourceLocation resource_location = config.getValue();
+                                    ChapterBackground.set(
+                                            this.chapter,
+                                            ImageResourceConfig.NONE.equals(resource_location) ? null : resource_location
+                                    );
+                                    EditObjectMessage.sendToServer(this.chapter);
+                                    ((QuestScreen) screen).refreshQuestPanel();
+                                }
 
-                        // 选择器回调结束后返回原任务书界面
-                        if (Minecraft.getInstance().screen instanceof ScreenWrapper screen_wrapper) {
-                            screen_wrapper.getGui().closeGui(true);
+                                // 选择器回调结束后返回原任务书界面
+                                if (Minecraft.getInstance().screen instanceof ScreenWrapper screen_wrapper) {
+                                    screen_wrapper.getGui().closeGui(true);
+                                }
+                            }).withGridSize(8, 12).openGui();
                         }
-                    }).withGridSize(8, 12).openGui();
-                }
-        )));
+                ),
+                ChapterPrerequisiteMenus.create((QuestScreen) screen, this.chapter)
+        ));
         screen.openContextMenu(context_menu_builder.build(screen));
     }
 }

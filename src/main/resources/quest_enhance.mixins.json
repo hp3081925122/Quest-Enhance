@@ -38,6 +38,7 @@
     "QuestScreenMixin",
     "QuestScreenAccessor",
     "TaskButtonMixin",
+    "ToastQuestObjectMixin",
     "TextFieldAccessor",
     "TextFieldMixin",
     "ViewQuestPanelBackgroundMixin",

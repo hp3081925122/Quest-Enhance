@@ -10,6 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 public final class KillTaskEntityPreview {
     private ResourceLocation cached_entity_id;
@@ -23,7 +25,8 @@ public final class KillTaskEntityPreview {
             int x,
             int y,
             int width,
-            int height
+            int height,
+            boolean clip_to_bounds
     ) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
@@ -57,18 +60,44 @@ public final class KillTaskEntityPreview {
         int scale = Math.max(1, (int) Math.floor(Math.min(scale_by_width, scale_by_height)));
 
         try {
-            InventoryScreen.renderEntityInInventoryFollowsAngle(
-                    graphics,
-                    x,
-                    y,
-                    x + width,
-                    y + height,
-                    scale,
-                    0.0F,
-                    0.35F,
-                    -0.1F,
-                    this.cached_entity
-            );
+            if (clip_to_bounds) {
+                InventoryScreen.renderEntityInInventoryFollowsAngle(
+                        graphics,
+                        x,
+                        y,
+                        x + width,
+                        y + height,
+                        scale,
+                        0.0F,
+                        0.35F,
+                        -0.1F,
+                        this.cached_entity
+                );
+            } else {
+                // 完成提示处于局部坐标系，直接调用底层方法以避开原版屏幕裁剪
+                float center_x = x + width / 2.0F;
+                float center_y = y + height / 2.0F;
+                Quaternionf pose = new Quaternionf().rotateZ((float) Math.PI);
+                Quaternionf camera_orientation = new Quaternionf().rotateX(
+                        -0.1F * 20.0F * ((float) Math.PI / 180.0F)
+                );
+                pose.mul(camera_orientation);
+                Vector3f translation = new Vector3f(
+                        0.0F,
+                        this.cached_entity.getBbHeight() / 2.0F,
+                        0.0F
+                );
+                InventoryScreen.renderEntityInInventory(
+                        graphics,
+                        center_x,
+                        center_y,
+                        scale / this.cached_entity.getScale(),
+                        translation,
+                        pose,
+                        camera_orientation,
+                        this.cached_entity
+                );
+            }
             return true;
         } catch (RuntimeException exception) {
             this.cached_entity = null;

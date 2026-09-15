@@ -2,8 +2,10 @@ package com.quest_enhance;
 
 import com.quest_enhance.mixin.ChapterImageAccessor;
 import com.quest_enhance.client.canvas.ChapterImageClickData;
+import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ChapterImage;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -11,13 +13,19 @@ import java.util.UUID;
 // 用原生章节图片承载可选中、移动和删除的装饰线辅助点
 public final class DecorativeAnchor {
     private static final String PREFIX = "quest_enhance:decorative_anchor:";
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            QuestEnhance.MOD_ID,
+            "textures/icons/decorative_anchor.png"
+    );
 
     private DecorativeAnchor() {
     }
 
     // 在画布坐标处创建带独立 UUID 的辅助点
     public static ChapterImage create(Chapter chapter, double x, double y) {
-        ChapterImage image = new ChapterImage(0L, chapter).setPosition(x, y);
+        ChapterImage image = new ChapterImage(0L, chapter)
+                .setPosition(x, y)
+                .setImage(Icon.getIcon(TEXTURE));
         ChapterImageAccessor accessor = (ChapterImageAccessor) (Object) image;
         accessor.quest_enhance$set_width(0.4D);
         accessor.quest_enhance$set_height(0.4D);
