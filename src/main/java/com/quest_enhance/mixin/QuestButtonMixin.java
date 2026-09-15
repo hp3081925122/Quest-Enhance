@@ -262,7 +262,8 @@ public abstract class QuestButtonMixin {
                 model_x,
                 model_y,
                 model_size,
-                model_size
+                model_size,
+                false
         );
         if (!this.quest_enhance$entity_model_render_logged) {
             this.quest_enhance$entity_model_render_logged = true;

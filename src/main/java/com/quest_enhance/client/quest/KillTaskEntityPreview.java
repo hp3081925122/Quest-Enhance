@@ -24,7 +24,8 @@ public final class KillTaskEntityPreview {
             int x,
             int y,
             int width,
-            int height
+            int height,
+            boolean local_coordinates
     ) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
@@ -58,12 +59,19 @@ public final class KillTaskEntityPreview {
         int scale = Math.max(1, (int) Math.floor(Math.min(scale_by_width, scale_by_height)));
 
         try {
+            // GuiGraphicsExtractor 的实体画中画坐标不读取当前 Toast 平移，需要转换到屏幕坐标
+            int render_x = local_coordinates
+                    ? Math.round(x + graphics.pose().m20())
+                    : x;
+            int render_y = local_coordinates
+                    ? Math.round(y + graphics.pose().m21())
+                    : y;
             InventoryScreen.renderEntityInInventoryFollowsAngle(
                     graphics,
-                    x,
-                    y,
-                    x + width,
-                    y + height,
+                    render_x,
+                    render_y,
+                    render_x + width,
+                    render_y + height,
                     scale,
                     0.0F,
                     0.35F,

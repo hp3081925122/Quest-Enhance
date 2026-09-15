@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.client.background.BackgroundImagePicker;
+import com.quest_enhance.client.quest.ChapterPrerequisiteMenus;
 import com.quest_enhance.common.ChapterBackground;
 import dev.ftb.mods.ftblibrary.client.gui.theme.Theme;
 import dev.ftb.mods.ftblibrary.client.gui.widget.BaseScreen;
@@ -39,19 +40,22 @@ public abstract class ChapterButtonMixin {
             ContextMenuBuilder context_menu_builder,
             BaseScreen screen
     ) {
-        context_menu_builder.insertAtTop(List.of(new ContextMenuItem(
-                Component.translatable("quest_enhance.chapter_background"),
-                Icons.ART,
-                button -> BackgroundImagePicker.open(
-                        screen,
-                        ChapterBackground.get(this.chapter).orElse(null),
-                        resource_id -> {
-                            ChapterBackground.set(this.chapter, resource_id);
-                            EditObjectMessage.sendToServer(this.chapter);
-                            ((QuestScreen) screen).refreshQuestPanel();
-                        }
-                )
-        )));
+        context_menu_builder.insertAtTop(List.of(
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.chapter_background"),
+                        Icons.ART,
+                        button -> BackgroundImagePicker.open(
+                                screen,
+                                ChapterBackground.get(this.chapter).orElse(null),
+                                resource_id -> {
+                                    ChapterBackground.set(this.chapter, resource_id);
+                                    EditObjectMessage.sendToServer(this.chapter);
+                                    ((QuestScreen) screen).refreshQuestPanel();
+                                }
+                        )
+                ),
+                ChapterPrerequisiteMenus.create((QuestScreen) screen, this.chapter)
+        ));
         context_menu_builder.openContextMenu(screen);
     }
 }

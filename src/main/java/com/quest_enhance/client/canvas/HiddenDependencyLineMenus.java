@@ -3,6 +3,7 @@ package com.quest_enhance.client.canvas;
 import com.quest_enhance.HiddenDependencyLines;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.mixin.QuestScreenAccessor;
+import dev.ftb.mods.ftblibrary.client.config.editable.EditableBoolean;
 import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
 import dev.ftb.mods.ftblibrary.client.config.gui.EditConfigScreen;
 import dev.ftb.mods.ftblibrary.icon.Icons;
@@ -123,7 +124,12 @@ public final class HiddenDependencyLineMenus {
         boolean[] hidden = {existing != null};
         boolean[] reveal_on_hover = {existing != null && existing.reveal_on_hover()};
         EditableConfigGroup group = new EditableConfigGroup("quest_enhance", accepted -> {
-            QuestEnhance.LOGGER.debug("Closed hidden dependency line editor: accepted={}", accepted);
+            QuestEnhance.LOGGER.debug(
+                    "Closed hidden dependency line editor: accepted={}, hidden={}, revealOnHover={}",
+                    accepted,
+                    hidden[0],
+                    reveal_on_hover[0]
+            );
             if (accepted) {
                 HiddenDependencyLines.set(
                         chapter,
@@ -137,9 +143,24 @@ public final class HiddenDependencyLineMenus {
             }
             parent_panel.run();
         });
-        group.addBool("hidden", hidden[0], value -> hidden[0] = value, false)
-                .setNameKey("quest_enhance.dependency_line.hidden");
-        group.addBool("reveal_on_hover", reveal_on_hover[0], value -> reveal_on_hover[0] = value, false)
+        EditableBoolean[] hidden_config = new EditableBoolean[1];
+        hidden_config[0] = group.addBool(
+                "hidden",
+                hidden[0],
+                value -> {
+                    hidden[0] = value || reveal_on_hover[0];
+                    hidden_config[0].updateValue(hidden[0]);
+                },
+                false
+        );
+        hidden_config[0].setNameKey("quest_enhance.dependency_line.hidden");
+        group.addBool("reveal_on_hover", reveal_on_hover[0], value -> {
+                    reveal_on_hover[0] = value;
+                    if (value) {
+                        hidden[0] = true;
+                        hidden_config[0].updateValue(true);
+                    }
+                }, false)
                 .setNameKey("quest_enhance.dependency_line.reveal_on_hover");
 
         new EditConfigScreen(group) {
