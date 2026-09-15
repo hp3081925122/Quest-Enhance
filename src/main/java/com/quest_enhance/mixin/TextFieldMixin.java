@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.description.QuestDescriptionTable;
 import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Theme;
@@ -16,8 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class TextFieldMixin {
     @Shadow
     private Component rawText;
+    private boolean quest_enhance$table_logged;
 
-    // 1.20.1 的任务描述字段继承此绘制方法，在基础文字字段中识别并绘制表格
+    // 1.20.1 的描述字段继承 TextField.draw，因此只允许 FTB Quests 专用描述字段绘制表格。
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$draw_table(
             GuiGraphics graphics,
@@ -28,7 +30,16 @@ public abstract class TextFieldMixin {
             int height,
             CallbackInfo callback_info
     ) {
+        if (!this.getClass().getName().equals(
+                "dev.ftb.mods.ftbquests.client.gui.quests.ViewQuestPanel$QuestDescriptionField"
+        )) {
+            return;
+        }
         QuestDescriptionTable.find(this.rawText).ifPresent(table -> {
+            if (!this.quest_enhance$table_logged) {
+                QuestEnhance.LOGGER.debug("Rendering table in the FTB Quests description field");
+                this.quest_enhance$table_logged = true;
+            }
             QuestDescriptionTable.draw(graphics, theme, x, y, width, table);
             callback_info.cancel();
         });

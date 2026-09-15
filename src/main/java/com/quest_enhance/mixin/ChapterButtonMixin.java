@@ -2,6 +2,7 @@ package com.quest_enhance.mixin;
 
 import com.quest_enhance.ChapterBackground;
 import com.quest_enhance.client.background.BackgroundImagePicker;
+import com.quest_enhance.client.quest.ChapterPrerequisiteMenus;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.ui.BaseScreen;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
@@ -38,19 +39,23 @@ public abstract class ChapterButtonMixin {
             BaseScreen screen
     ) {
         // 使用 FTB 图片资源选择器，选择结果由章节数据保存并同步到服务端
-        context_menu_builder.insertAtTop(List.of(new ContextMenuItem(
-                Component.translatable("quest_enhance.chapter_background"),
-                Icons.ART,
-                button -> BackgroundImagePicker.open(
-                        screen,
-                        ChapterBackground.get(this.chapter).orElse(null),
-                        resource_location -> {
-                            ChapterBackground.set(this.chapter, resource_location);
-                            new EditObjectMessage(this.chapter).sendToServer();
-                            ((QuestScreen) screen).refreshQuestPanel();
-                        }
-                )
-        )));
+        // 在原生章节菜单顶部加入背景图片与章节前置管理入口
+        context_menu_builder.insertAtTop(List.of(
+                new ContextMenuItem(
+                        Component.translatable("quest_enhance.chapter_background"),
+                        Icons.ART,
+                        button -> BackgroundImagePicker.open(
+                                screen,
+                                ChapterBackground.get(this.chapter).orElse(null),
+                                resource_location -> {
+                                    ChapterBackground.set(this.chapter, resource_location);
+                                    new EditObjectMessage(this.chapter).sendToServer();
+                                    ((QuestScreen) screen).refreshQuestPanel();
+                                }
+                        )
+                ),
+                ChapterPrerequisiteMenus.create((QuestScreen) screen, this.chapter)
+        ));
         screen.openContextMenu(context_menu_builder.build(screen));
     }
 }

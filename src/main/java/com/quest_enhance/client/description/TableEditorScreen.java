@@ -131,12 +131,23 @@ public final class TableEditorScreen extends BaseScreen {
             }
 
             @Override
+            public boolean keyPressed(Key key) {
+                // 在 TextBox 结束编辑前处理 Shift+Enter，确保插入的是单元格内的实际换行符
+                if (key.is(GLFW.GLFW_KEY_ENTER) && Widget.isShiftKeyDown()) {
+                    TableEditorScreen.this.insertCellLineBreak(this);
+                    return true;
+                }
+                return super.keyPressed(key);
+            }
+
+            @Override
             public void onEnterPressed() {
+                // Shift+Enter 在当前单元格中插入换行，普通 Enter 结束编辑
                 TableEditorScreen.this.finishCellEdit();
             }
         };
         this.cell_editor.setMaxLength(QuestDescriptionTable.MAX_CELL_LENGTH);
-        this.cell_editor.setFilter(value -> !value.contains("\r") && !value.contains("\n"));
+        this.cell_editor.setFilter(value -> !value.contains("\r"));
         this.add(this.cell_editor);
 
         // 选中单元格时在单元格内部显示可直接输入的文本框
@@ -158,12 +169,23 @@ public final class TableEditorScreen extends BaseScreen {
             }
 
             @Override
+            public boolean keyPressed(Key key) {
+                // 在 TextBox 结束编辑前处理 Shift+Enter，确保插入的是单元格内的实际换行符
+                if (key.is(GLFW.GLFW_KEY_ENTER) && Widget.isShiftKeyDown()) {
+                    TableEditorScreen.this.insertCellLineBreak(this);
+                    return true;
+                }
+                return super.keyPressed(key);
+            }
+
+            @Override
             public void onEnterPressed() {
+                // Shift+Enter 在当前单元格中插入换行，普通 Enter 结束编辑
                 TableEditorScreen.this.finishCellEdit();
             }
         };
         this.direct_cell_editor.setMaxLength(QuestDescriptionTable.MAX_CELL_LENGTH);
-        this.direct_cell_editor.setFilter(value -> !value.contains("\r") && !value.contains("\n"));
+        this.direct_cell_editor.setFilter(value -> !value.contains("\r"));
         this.add(this.direct_cell_editor);
 
         // 底部提供与快捷键共用的撤销和重做操作
@@ -1020,6 +1042,27 @@ public final class TableEditorScreen extends BaseScreen {
         this.loading_cell_editor = false;
     }
 
+    // TextBox 的普通插入会过滤换行符，因此直接替换选区并恢复输入光标
+    private void insertCellLineBreak(TextBox editor) {
+        String value = editor.getText();
+        String selected = editor.getSelectedText();
+        int cursor = editor.getCursorPos();
+        int start = cursor;
+
+        // 光标在选区右侧时，把换行替换到完整选区的位置
+        if (!selected.isEmpty()
+                && cursor >= selected.length()
+                && value.regionMatches(cursor - selected.length(), selected, 0, selected.length())) {
+            start = cursor - selected.length();
+        }
+
+        int end = start + selected.length();
+        String updated = value.substring(0, start) + "\n" + value.substring(end);
+        editor.setText(updated);
+        editor.setCursorPos(start + 1);
+        editor.setSelectionPos(start + 1);
+    }
+
     // 根据滚动位置更新单元格内输入框的可见区域
     private void updateDirectCellEditorPosition(QuestDescriptionTable.TableLayout layout) {
         if (this.editing_row < 0 || this.editing_column < 0) {
@@ -1154,6 +1197,7 @@ public final class TableEditorScreen extends BaseScreen {
         );
         int target_row = target_merge == null ? context_row : target_merge.row();
         int target_column = target_merge == null ? context_column : target_merge.column();
+        boolean apply_selection = this.isCellSelected(context_row, context_column);
         QuestDescriptionTable.CellStyle current = data.cellStyle(target_row, target_column);
         boolean[] next_header = {current.header()};
         QuestDescriptionTable.TextAlignment[] next_alignment = {current.alignment()};
@@ -1165,7 +1209,7 @@ public final class TableEditorScreen extends BaseScreen {
         Color4I[] next_cell_color = {current.cellColor()};
         Color4I[] next_text_color = {current.textColor()};
 
-        // 确认后把样式写入当前单元格，合并区域统一使用左上角样式。
+        // 确认后把样式写入当前选区；未选中时仅作用于右键单元格或其合并区域。
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
                 QuestDescriptionTable.TableData previous = this.tableData();
@@ -1180,12 +1224,18 @@ public final class TableEditorScreen extends BaseScreen {
                         next_cell_color[0],
                         next_text_color[0]
                 );
-                int start_row = target_merge == null ? target_row : target_merge.row();
-                int start_column = target_merge == null ? target_column : target_merge.column();
-                int end_row = target_merge == null ? target_row + 1 : target_merge.row() + target_merge.rowSpan();
-                int end_column = target_merge == null
-                        ? target_column + 1
-                        : target_merge.column() + target_merge.columnSpan();
+                int start_row = apply_selection
+                        ? Math.min(this.selection_start_row, this.selection_end_row)
+                        : target_merge == null ? target_row : target_merge.row();
+                int start_column = apply_selection
+                        ? Math.min(this.selection_start_column, this.selection_end_column)
+                        : target_merge == null ? target_column : target_merge.column();
+                int end_row = apply_selection
+                        ? Math.max(this.selection_start_row, this.selection_end_row) + 1
+                        : target_merge == null ? target_row + 1 : target_merge.row() + target_merge.rowSpan();
+                int end_column = apply_selection
+                        ? Math.max(this.selection_start_column, this.selection_end_column) + 1
+                        : target_merge == null ? target_column + 1 : target_merge.column() + target_merge.columnSpan();
                 for (int row = start_row; row < end_row; row++) {
                     for (int column = start_column; column < end_column; column++) {
                         this.cell_styles.set(row * this.columns + column, next_style);
@@ -1210,7 +1260,7 @@ public final class TableEditorScreen extends BaseScreen {
                 next_alignment[0],
                 value -> next_alignment[0] = value,
                 QuestDescriptionTable.TextAlignment.NAME_MAP,
-                QuestDescriptionTable.TextAlignment.LEFT
+                QuestDescriptionTable.TextAlignment.CENTER
         ).setNameKey("quest_enhance.description_component.table.alignment");
         group.addInt("row_height", next_row_height[0], value -> next_row_height[0] = value, 18, 12, 30)
                 .setNameKey("quest_enhance.description_component.table.cell_row_height");

@@ -236,7 +236,8 @@ public abstract class QuestButtonMixin {
                 model_x,
                 model_y,
                 model_size,
-                model_size
+                model_size,
+                true
         );
     }
 

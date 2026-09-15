@@ -23,7 +23,8 @@ public final class KillTaskEntityPreview {
             int x,
             int y,
             int width,
-            int height
+            int height,
+            boolean clip_to_bounds
     ) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
@@ -56,7 +57,9 @@ public final class KillTaskEntityPreview {
         float scale_by_height = height * 0.85F / Math.max(this.cached_entity.getBbHeight(), 0.25F);
         int scale = Math.max(1, (int) Math.floor(Math.min(scale_by_width, scale_by_height)));
 
-        graphics.enableScissor(x, y, x + width, y + height);
+        if (clip_to_bounds) {
+            graphics.enableScissor(x, y, x + width, y + height);
+        }
         try {
             InventoryScreen.renderEntityInInventoryFollowsAngle(
                     graphics,
@@ -73,7 +76,9 @@ public final class KillTaskEntityPreview {
             QuestEnhance.LOGGER.error("Failed to render entity preview {}", entity_id, exception);
             return false;
         } finally {
-            graphics.disableScissor();
+            if (clip_to_bounds) {
+                graphics.disableScissor();
+            }
         }
     }
 }

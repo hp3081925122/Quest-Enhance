@@ -84,7 +84,7 @@ public abstract class TaskButtonMixin {
             this.quest_enhance$entity_preview = new KillTaskEntityPreview();
         }
         ResourceLocation entity_id = ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
-        if (this.quest_enhance$entity_preview.render(entity_id, graphics, x, y, width, height)) {
+        if (this.quest_enhance$entity_preview.render(entity_id, graphics, x, y, width, height, true)) {
             callback_info.cancel();
         }
     }

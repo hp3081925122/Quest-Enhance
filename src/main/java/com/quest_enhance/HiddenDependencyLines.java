@@ -58,6 +58,7 @@ public final class HiddenDependencyLines {
             boolean hidden,
             boolean reveal_on_hover
     ) {
+        hidden = hidden || reveal_on_hover;
         List<Line> lines = get(chapter);
         for (int index = 0; index < lines.size(); index++) {
             Line line = lines.get(index);
