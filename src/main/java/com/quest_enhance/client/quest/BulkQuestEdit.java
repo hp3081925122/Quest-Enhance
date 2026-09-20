@@ -59,8 +59,8 @@ public final class BulkQuestEdit {
         for (TaskType task_type : TaskTypes.TYPES.values()) {
             task_items.add(new ContextMenuItem(
                     task_type.getDisplayName(),
-                    task_type.getIconSupplier(),
-                    button -> task_type.getGuiProvider().openCreationGui(
+                    task_type.getIcon(),
+                    button -> task_type.getGuiProviderOrThrow().openCreationGui(
                             button.getParent(),
                             quests.getFirst(),
                             task -> addTaskToAll(screen, quests, task)
@@ -75,11 +75,7 @@ public final class BulkQuestEdit {
         for (Quest quest : quests) {
             Task copied_task = QuestObjectBase.copy(
                     source_task,
-                    () -> TaskType.createTask(
-                            0L,
-                            quest,
-                            source_task.getType().getTypeId().toString()
-                    )
+                    () -> source_task.getType().create(0L, quest)
             );
             if (copied_task != null) {
                 Play2ServerNetworking.send(CreateObjectMessage.requestCreation(copied_task));

@@ -864,7 +864,8 @@ public final class QuestUtils {
             return null;
         }
 
-        Task task = TaskType.createTask(file.newID(), quest, type);
+        TaskType task_type = TaskType.get(type);
+        Task task = task_type == null ? null : task_type.create(file.newID(), quest);
         if (task == null) {
             return null;
         }
@@ -896,7 +897,8 @@ public final class QuestUtils {
             return null;
         }
 
-        Reward reward = RewardType.createReward(file.newID(), quest, type);
+        RewardType reward_type = RewardType.get(type);
+        Reward reward = reward_type == null ? null : reward_type.create(file.newID(), quest);
         if (reward == null) {
             return null;
         }
