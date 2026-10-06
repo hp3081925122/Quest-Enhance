@@ -1,16 +1,20 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.access.KillTaskAccessor;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.quest.EntityModelToastIcon;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
+import com.quest_enhance.compat.QuestsAdditionsCompatibility;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftbquests.client.gui.ToastQuestObject;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObject;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -35,6 +39,11 @@ public abstract class ToastQuestObjectMixin {
     // 在 FTB 原完成通知绘制图标前提供生物模型图标
     @Inject(method = "getIcon", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$use_entity_model_icon(CallbackInfoReturnable<Icon> callback_info) {
+        if (this.quest_enhance$has_tag_kill_model()) {
+            callback_info.setReturnValue(ItemIcon.getItemIcon(Items.SPAWNER));
+            return;
+        }
+
         ResourceLocation entity_id = quest_enhance$get_entity_model();
         if (entity_id == null) {
             return;
@@ -54,7 +63,8 @@ public abstract class ToastQuestObjectMixin {
         if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()) {
             return null;
         }
-        if (this.object instanceof KillTask kill_task) {
+        if (this.object instanceof KillTask kill_task
+                && !QuestsAdditionsCompatibility.isKillNbtTask(kill_task)) {
             return ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
         }
         if (!(this.object instanceof Quest quest)) {
@@ -75,11 +85,50 @@ public abstract class ToastQuestObjectMixin {
             if (!(task instanceof KillTask candidate)) {
                 continue;
             }
+            if (QuestsAdditionsCompatibility.isKillNbtTask(candidate)) {
+                continue;
+            }
             if (kill_task != null) {
                 return null;
             }
             kill_task = candidate;
         }
         return kill_task == null ? null : ((KillTaskAccessor) kill_task).quest_enhance$get_entity();
+    }
+
+    @Unique
+    private boolean quest_enhance$has_tag_kill_model() {
+        if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()) {
+            return false;
+        }
+        if (this.object instanceof KillTask kill_task
+                && !QuestsAdditionsCompatibility.isKillNbtTask(kill_task)) {
+            return ((KillTaskAccessor) kill_task).quest_enhance$get_entity_type_tag() != null;
+        }
+        if (!(this.object instanceof Quest quest)) {
+            return false;
+        }
+
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) quest).quest_enhance$get_raw_icon();
+        if (QuestEntityModel.getEntityModel(raw_icon).isPresent()
+                || (!raw_icon.isEmpty() && !QuestVideoData.isPlaceholder(raw_icon))) {
+            return false;
+        }
+
+        KillTask tag_task = null;
+        for (Object task : quest.getTasks()) {
+            if (!(task instanceof KillTask candidate)) {
+                continue;
+            }
+            if (QuestsAdditionsCompatibility.isKillNbtTask(candidate)) {
+                continue;
+            }
+            if (tag_task != null) {
+                return false;
+            }
+            tag_task = candidate;
+        }
+        return tag_task != null
+                && ((KillTaskAccessor) tag_task).quest_enhance$get_entity_type_tag() != null;
     }
 }

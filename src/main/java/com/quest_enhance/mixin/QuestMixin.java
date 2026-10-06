@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestBackground;
+import com.quest_enhance.QuestScrollPaging;
 import com.quest_enhance.QuestViewBackground;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import net.minecraft.nbt.CompoundTag;
@@ -18,6 +19,7 @@ public abstract class QuestMixin {
     private void quest_enhance$write_quest_background(CompoundTag tag, CallbackInfo callback_info) {
         QuestBackground.writeData((Quest) (Object) this, tag);
         QuestViewBackground.writeData((Quest) (Object) this, tag);
+        QuestScrollPaging.writeData((Quest) (Object) this, tag);
     }
 
     // 从任务书存档恢复任务节点背景图片
@@ -25,6 +27,7 @@ public abstract class QuestMixin {
     private void quest_enhance$read_quest_background(CompoundTag tag, CallbackInfo callback_info) {
         QuestBackground.readData((Quest) (Object) this, tag);
         QuestViewBackground.readData((Quest) (Object) this, tag);
+        QuestScrollPaging.readData((Quest) (Object) this, tag);
     }
 
     // 将任务节点背景图片写入任务书网络同步数据
@@ -32,6 +35,7 @@ public abstract class QuestMixin {
     private void quest_enhance$write_quest_background_net(FriendlyByteBuf buffer, CallbackInfo callback_info) {
         QuestBackground.writeNetData((Quest) (Object) this, buffer);
         QuestViewBackground.writeNetData((Quest) (Object) this, buffer);
+        QuestScrollPaging.writeNetData((Quest) (Object) this, buffer);
     }
 
     // 从任务书网络同步数据恢复任务节点背景图片
@@ -39,5 +43,6 @@ public abstract class QuestMixin {
     private void quest_enhance$read_quest_background_net(FriendlyByteBuf buffer, CallbackInfo callback_info) {
         QuestBackground.readNetData((Quest) (Object) this, buffer);
         QuestViewBackground.readNetData((Quest) (Object) this, buffer);
+        QuestScrollPaging.readNetData((Quest) (Object) this, buffer);
     }
 }

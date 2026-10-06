@@ -10,4 +10,5 @@ public interface MultilineTextEditorAccess {
     String quest_enhance$get_selected_text();
 
     void quest_enhance$insert_component(Component component);
+
 }

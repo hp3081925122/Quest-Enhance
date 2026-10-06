@@ -1,0 +1,75 @@
+package com.quest_enhance.mixin;
+
+import com.quest_enhance.common.canvas.ChapterImageSelectionAccess;
+import dev.ftb.mods.ftbquests.quest.ChapterImage;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+// 为章节图片提供通用的范围选取属性和存取逻辑
+@Mixin(value = ChapterImage.class, remap = false)
+public abstract class ChapterImageSelectionMixin implements ChapterImageSelectionAccess {
+    @Unique
+    private static final String quest_enhance$EXCLUDE_FROM_BOX_SELECTION_KEY =
+            "quest_enhance_exclude_from_box_selection";
+
+    @Unique
+    private boolean quest_enhance$exclude_from_box_selection;
+
+    // 读取章节图片是否排除在拖动范围选取之外
+    @Override
+    @Unique
+    public boolean quest_enhance$is_excluded_from_box_selection() {
+        return this.quest_enhance$exclude_from_box_selection;
+    }
+
+    // 更新章节图片是否排除在拖动范围选取之外
+    @Override
+    @Unique
+    public void quest_enhance$set_excluded_from_box_selection(boolean excluded) {
+        this.quest_enhance$exclude_from_box_selection = excluded;
+    }
+
+    // 将范围选取属性写入章节图片存档数据
+    @Inject(method = "writeData", at = @At("TAIL"))
+    private void quest_enhance$write_box_selection_flag(
+            CompoundTag data,
+            CallbackInfoReturnable<CompoundTag> callback_info
+    ) {
+        data.putBoolean(
+                quest_enhance$EXCLUDE_FROM_BOX_SELECTION_KEY,
+                this.quest_enhance$exclude_from_box_selection
+        );
+    }
+
+    // 从章节图片存档数据恢复范围选取属性
+    @Inject(method = "readData", at = @At("TAIL"))
+    private void quest_enhance$read_box_selection_flag(CompoundTag data, CallbackInfo callback_info) {
+        this.quest_enhance$exclude_from_box_selection = data.getBoolean(
+                quest_enhance$EXCLUDE_FROM_BOX_SELECTION_KEY
+        );
+    }
+
+    // 将范围选取属性同步到客户端章节图片对象
+    @Inject(method = "writeNetData", at = @At("TAIL"))
+    private void quest_enhance$write_box_selection_net_data(
+            FriendlyByteBuf buffer,
+            CallbackInfo callback_info
+    ) {
+        buffer.writeBoolean(this.quest_enhance$exclude_from_box_selection);
+    }
+
+    // 从服务端网络数据恢复范围选取属性
+    @Inject(method = "readNetData", at = @At("TAIL"))
+    private void quest_enhance$read_box_selection_net_data(
+            FriendlyByteBuf buffer,
+            CallbackInfo callback_info
+    ) {
+        this.quest_enhance$exclude_from_box_selection = buffer.readBoolean();
+    }
+}

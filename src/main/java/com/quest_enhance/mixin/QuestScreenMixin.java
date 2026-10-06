@@ -1,13 +1,16 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.common.canvas.ChapterImageSelectionAccess;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.ChapterBackground;
 import com.quest_enhance.client.clipboard.ChapterClipboardImage;
 import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.quest_enhance.client.history.QuestScreenEditHistory;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.mojang.datafixers.util.Pair;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Widget;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.Key;
@@ -23,8 +26,10 @@ import dev.ftb.mods.ftbquests.quest.ChapterImage;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -62,6 +67,29 @@ public abstract class QuestScreenMixin {
 
     @Unique
     private static final Map<ResourceLocation, Icon> quest_enhance$background_icons = new HashMap<>();
+
+    // 范围选取只跳过显式标记的画板图片，不改变普通点击选取
+    @Inject(
+            method = "lambda$selectAllQuestsInBox$20",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void quest_enhance$skip_excluded_image_in_box_selection(
+            Rect2i selection,
+            double offset_x,
+            double offset_y,
+            Widget widget,
+            CallbackInfo callback_info
+    ) {
+        if (!(widget instanceof QuestPositionableButton positionable)
+                || !(positionable.moveAndDeleteFocus() instanceof ChapterImage image)) {
+            return;
+        }
+
+        if (((ChapterImageSelectionAccess) (Object) image).quest_enhance$is_excluded_from_box_selection()) {
+            callback_info.cancel();
+        }
+    }
 
     @Shadow
     @Final
@@ -313,6 +341,53 @@ public abstract class QuestScreenMixin {
             history.ignore_next_snapshot = true;
             callback_info.setReturnValue(true);
         }
+    }
+
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$handle_selection_transform(
+            Key key,
+            CallbackInfoReturnable<Boolean> callback_info
+    ) {
+        if (!key.modifiers.control()) {
+            return;
+        }
+
+        boolean shift = key.modifiers.shift();
+        boolean alt = key.modifiers.alt();
+        QuestSelectionTransform.Operation operation = null;
+        if (key.is(82) && shift != alt) {
+            operation = shift
+                    ? QuestSelectionTransform.Operation.ROTATE_CLOCKWISE
+                    : QuestSelectionTransform.Operation.ROTATE_COUNTERCLOCKWISE;
+        } else if (key.is(77) && shift != alt) {
+            operation = shift
+                    ? QuestSelectionTransform.Operation.MIRROR_HORIZONTAL
+                    : QuestSelectionTransform.Operation.MIRROR_VERTICAL;
+        }
+
+        if (operation == null) {
+            return;
+        }
+
+        QuestSelectionTransform.apply((QuestScreen) (Object) this, operation);
+        callback_info.setReturnValue(true);
+    }
+
+    @Inject(method = "addObjectMenuItems", at = @At("TAIL"))
+    private void quest_enhance$add_selection_transform_menu(
+            List<ContextMenuItem> context_menu,
+            Runnable close_menu,
+            QuestObjectBase object,
+            Movable movable,
+            CallbackInfo callback_info
+    ) {
+        QuestScreenAccessor accessor = (QuestScreenAccessor) this;
+        if (accessor.quest_enhance$get_selected_objects().stream().distinct().count() <= 1L) {
+            return;
+        }
+
+        context_menu.add(ContextMenuItem.SEPARATOR);
+        context_menu.add(QuestSelectionTransform.createMenu((QuestScreen) (Object) this));
     }
 
     // 按快捷键触发时补录尚未来得及进入下一刻的编辑变化

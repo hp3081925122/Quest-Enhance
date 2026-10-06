@@ -59,7 +59,8 @@ public final class DescriptionComponentMenu {
     // 打开统一的描述组件菜单，只补充 FTB 原生工具栏没有的功能
     public static void open(Panel parent, MultilineTextEditorAccess editor) {
         // 把交互、媒体和文字组件分组，避免工具栏继续横向增长
-        List<ContextMenuItem> navigation = List.of(
+        List<ContextMenuItem> navigation = new ArrayList<>();
+        navigation.addAll(List.of(
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.web_link"),
                         Icons.GLOBE,
@@ -85,7 +86,7 @@ public final class DescriptionComponentMenu {
                         Icons.CONTROLLER,
                         button -> openTextComponentConfig(parent, editor, TextAction.COMMAND)
                 ).setYesNoText(Component.translatable("quest_enhance.description_component.command.warning"))
-        );
+        ));
 
         // 媒体分组提供物品、网络图片和 Quest Enhance 视频能力
         List<ContextMenuItem> media = new ArrayList<>(List.of(
@@ -169,7 +170,9 @@ public final class DescriptionComponentMenu {
                 )
         );
 
-        parent.getGui().openContextMenu(List.of(
+        // 根菜单只保留原有的描述组件分类入口
+        List<ContextMenuItem> root_items = new ArrayList<>();
+        root_items.addAll(List.of(
                 ContextMenuItem.subMenu(
                         Component.translatable("quest_enhance.description_component.navigation"),
                         Icons.GLOBE,
@@ -186,6 +189,7 @@ public final class DescriptionComponentMenu {
                         text
                 )
         ));
+        parent.getGui().openContextMenu(root_items);
     }
 
     // 识别独立的快捷 JSON 组件，并用与插入时相同的配置页编辑原值

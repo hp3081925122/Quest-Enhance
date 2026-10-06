@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.access.KillTaskAccessor;
 import com.quest_enhance.QuestBackground;
 import com.quest_enhance.client.canvas.DecorativeLineMenus;
 import com.quest_enhance.client.canvas.HiddenDependencyLineMenus;
@@ -8,9 +9,12 @@ import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
 import com.quest_enhance.client.quest.BulkQuestEdit;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
+import com.quest_enhance.compat.QuestsAdditionsCompatibility;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
@@ -26,6 +30,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -64,6 +69,7 @@ public abstract class QuestButtonMixin {
     private boolean quest_enhance$hide_replaced_icon(Icon icon) {
         ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
         return this.quest_enhance$get_entity_model() != null
+                || this.quest_enhance$has_tag_kill_model()
                 || QuestVideoData.isPlaceholder(raw_icon)
                 || icon.isEmpty();
     }
@@ -141,7 +147,23 @@ public abstract class QuestButtonMixin {
             QuestBackgroundMenus.appendBulk(context_menu, this.questScreen);
         }
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
-        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
+        List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
+                context_menu,
+                this.questScreen,
+                clicked_object
+        );
+        if (((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_objects()
+                .stream()
+                .distinct()
+                .count() > 1L) {
+            int separator_index = appended_menu.indexOf(ContextMenuItem.SEPARATOR);
+            if (separator_index < 0) {
+                separator_index = appended_menu.size();
+            }
+            appended_menu.add(separator_index, QuestSelectionTransform.createMenu(this.questScreen));
+        }
+        return appended_menu;
     }
 
     // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
@@ -215,6 +237,23 @@ public abstract class QuestButtonMixin {
             int height,
             CallbackInfo callback_info
     ) {
+        if (this.quest_enhance$has_tag_kill_model()) {
+            int model_size = Math.max(1, Math.min(
+                    Math.min(width, height),
+                    Math.round(width * 0.6666667F * (float) this.quest.getIconScale())
+            ));
+            int model_x = x + (width - model_size) / 2;
+            int model_y = y + (height - model_size) / 2;
+            ItemIcon.getItemIcon(Items.SPAWNER).draw(
+                    graphics,
+                    model_x,
+                    model_y,
+                    model_size,
+                    model_size
+            );
+            return;
+        }
+
         ResourceLocation entity_id = this.quest_enhance$get_entity_model();
         if (entity_id == null) {
             return;
@@ -259,7 +298,27 @@ public abstract class QuestButtonMixin {
         }
 
         return this.quest.getTasks().iterator().next() instanceof KillTask kill_task
+                && !QuestsAdditionsCompatibility.isKillNbtTask(kill_task)
                 ? ((KillTaskAccessor) kill_task).quest_enhance$get_entity()
                 : null;
+    }
+
+    @Unique
+    private boolean quest_enhance$has_tag_kill_model() {
+        if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()
+                || this.quest.getTasks().size() != 1) {
+            return false;
+        }
+
+        ItemStack raw_icon = ((QuestObjectBaseAccessor) (Object) this.quest).quest_enhance$get_raw_icon();
+        if (QuestEntityModel.getEntityModel(raw_icon).isPresent()
+                || (!raw_icon.isEmpty() && !QuestVideoData.isPlaceholder(raw_icon))) {
+            return false;
+        }
+
+        Object task = this.quest.getTasks().iterator().next();
+        return task instanceof KillTask kill_task
+                && !QuestsAdditionsCompatibility.isKillNbtTask(kill_task)
+                && ((KillTaskAccessor) kill_task).quest_enhance$get_entity_type_tag() != null;
     }
 }

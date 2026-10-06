@@ -1,9 +1,12 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.access.KillTaskAccessor;
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
+import com.quest_enhance.compat.QuestsAdditionsCompatibility;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftblibrary.ui.Theme;
+import dev.ftb.mods.ftblibrary.icon.ItemIcon;
 import dev.ftb.mods.ftbquests.client.gui.quests.TaskButton;
 import dev.ftb.mods.ftbquests.quest.task.AdvancementTask;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
@@ -14,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -75,7 +79,14 @@ public abstract class TaskButtonMixin {
             CallbackInfo callback_info
     ) {
         if (!QuestEnhanceClientConfig.RENDER_KILL_TASK_ENTITY_MODELS.get()
-                || !(this.task instanceof KillTask kill_task)) {
+                || !(this.task instanceof KillTask kill_task)
+                || QuestsAdditionsCompatibility.isKillNbtTask(kill_task)) {
+            return;
+        }
+
+        if (((KillTaskAccessor) kill_task).quest_enhance$get_entity_type_tag() != null) {
+            ItemIcon.getItemIcon(Items.SPAWNER).draw(graphics, x, y, width, height);
+            callback_info.cancel();
             return;
         }
 

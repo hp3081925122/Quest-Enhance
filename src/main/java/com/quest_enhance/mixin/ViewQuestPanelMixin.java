@@ -1,10 +1,13 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.description.DescriptionComponentMenu;
 import com.quest_enhance.client.description.PlayerPersistentDataClient;
 import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
+import com.quest_enhance.QuestScrollPaging;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
+import dev.ftb.mods.ftblibrary.ui.ModalPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Widget;
@@ -19,6 +22,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,13 +30,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Mixin(value = ViewQuestPanel.class, remap = false)
-public abstract class ViewQuestPanelMixin {
+public abstract class ViewQuestPanelMixin extends ModalPanel {
+    protected ViewQuestPanelMixin(Panel parent) {
+        super(parent);
+    }
+
     // 只识别标准 Markdown ATX 标题写法，避免误处理正文中的井号
     @Unique
     private static final Pattern MARKDOWN_HEADING = Pattern.compile("^(#{1,6})[ \\t]+(.+)$");
@@ -42,6 +51,71 @@ public abstract class ViewQuestPanelMixin {
 
     @Shadow
     private BlankPanel panelText;
+
+    @Shadow
+    private List<?> pageIndices;
+
+    @Shadow
+    private long lastScrollTime;
+
+    @Shadow
+    private int getCurrentPage() {
+        throw new AssertionError();
+    }
+
+    @Shadow
+    private void setCurrentPage(int page) {
+        throw new AssertionError();
+    }
+
+    /**
+     * 保留 FTB 原生正文滚动，并根据任务节点开关决定是否执行翻页。
+     *
+     * @author Quest Enhance
+     * @reason 关闭翻页时仍需保留正文滚动处理
+     */
+    @Overwrite
+    @Override
+    public boolean mouseScrolled(double delta) {
+        long now = System.currentTimeMillis();
+        boolean disabled = this.quest != null && QuestScrollPaging.isDisabled(this.quest);
+        boolean panel_handled = super.mouseScrolled(delta);
+        QuestEnhance.LOGGER.debug(
+                "Quest scroll paging input: disabled={}, panelHandled={}, delta={}",
+                disabled,
+                panel_handled,
+                delta
+        );
+
+        if (panel_handled) {
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        if (disabled) {
+            return true;
+        }
+
+        if (now - this.lastScrollTime <= 500L) {
+            return false;
+        }
+
+        if (delta < 0.0D && this.getCurrentPage() < this.pageIndices.size() - 1) {
+            this.setCurrentPage(this.getCurrentPage() + 1);
+            this.refreshWidgets();
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        if (delta > 0.0D && this.getCurrentPage() > 0) {
+            this.setCurrentPage(this.getCurrentPage() - 1);
+            this.refreshWidgets();
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        return false;
+    }
 
     // 右键编辑由快捷菜单生成的独立 JSON 组件时改用对应配置界面
     @Inject(method = "editDescLine0", at = @At("HEAD"), cancellable = true)
