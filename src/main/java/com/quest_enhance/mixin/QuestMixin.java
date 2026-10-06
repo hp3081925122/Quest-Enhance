@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.common.QuestBackground;
+import com.quest_enhance.common.QuestScrollPaging;
 import com.quest_enhance.common.QuestViewBackground;
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -23,6 +24,7 @@ public abstract class QuestMixin {
     ) {
         QuestBackground.writeData((Quest) (Object) this, data);
         QuestViewBackground.writeData((Quest) (Object) this, data);
+        QuestScrollPaging.writeData((Quest) (Object) this, data);
     }
 
     // 从任务书 JSON5 存档恢复任务节点背景图片
@@ -34,6 +36,7 @@ public abstract class QuestMixin {
     ) {
         QuestBackground.readData((Quest) (Object) this, data);
         QuestViewBackground.readData((Quest) (Object) this, data);
+        QuestScrollPaging.readData((Quest) (Object) this, data);
     }
 
     // 将任务节点背景图片写入任务书网络同步数据
@@ -44,6 +47,7 @@ public abstract class QuestMixin {
     ) {
         QuestBackground.writeNetData((Quest) (Object) this, buffer);
         QuestViewBackground.writeNetData((Quest) (Object) this, buffer);
+        QuestScrollPaging.writeNetData((Quest) (Object) this, buffer);
     }
 
     // 从任务书网络同步数据恢复任务节点背景图片
@@ -54,5 +58,6 @@ public abstract class QuestMixin {
     ) {
         QuestBackground.readNetData((Quest) (Object) this, buffer);
         QuestViewBackground.readNetData((Quest) (Object) this, buffer);
+        QuestScrollPaging.readNetData((Quest) (Object) this, buffer);
     }
 }

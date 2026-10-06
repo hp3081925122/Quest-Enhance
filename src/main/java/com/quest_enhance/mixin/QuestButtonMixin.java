@@ -10,6 +10,7 @@ import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
 import com.quest_enhance.client.quest.BulkQuestEdit;
 import com.quest_enhance.client.quest.QuestBackgroundMenus;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.quest_enhance.common.QuestBackground;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.client.icon.IconHelper;
@@ -150,7 +151,23 @@ public abstract class QuestButtonMixin {
             QuestBackgroundMenus.appendBulk(context_menu, this.questScreen);
         }
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
-        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
+        List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
+                context_menu,
+                this.questScreen,
+                clicked_object
+        );
+        if (((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_objects()
+                .stream()
+                .distinct()
+                .count() > 1L) {
+            int separator_index = appended_menu.indexOf(ContextMenuItem.SEPARATOR);
+            if (separator_index < 0) {
+                separator_index = appended_menu.size();
+            }
+            appended_menu.add(separator_index, QuestSelectionTransform.createMenu(this.questScreen));
+        }
+        return appended_menu;
     }
 
     // 在未选中任务的原版右键菜单顶部加入前置线编辑入口

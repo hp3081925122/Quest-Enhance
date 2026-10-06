@@ -1,9 +1,11 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.media.VideoConfig;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.QuestEntityModel;
 import com.quest_enhance.client.quest.QuestVideoData;
+import com.quest_enhance.common.QuestScrollPaging;
 import dev.ftb.mods.ftblibrary.client.config.EditableConfigGroup;
 import dev.ftb.mods.ftblibrary.client.config.editable.EditableConfigValue;
 import dev.ftb.mods.ftblibrary.util.NameMap;
@@ -95,10 +97,21 @@ public abstract class QuestConfigMixin {
             ).setNameKey("quest_enhance.quest_video").setOrder(-124);
         }
 
+        // 在任务节点配置中保存关闭滚轮翻页属性，不再向描述文本写入明文标记
+        config.addBool(
+                "disable_scroll_paging",
+                QuestScrollPaging.isDisabled(quest),
+                disabled -> {
+                    QuestScrollPaging.setDisabled(quest, disabled);
+                    QuestEnhance.LOGGER.debug("Quest scroll paging disabled: {}", disabled);
+                },
+                false
+        ).setNameKey("quest_enhance.disable_scroll_paging").setOrder(-123);
+
         // 给模型项腾出图标下方的位置，并保持标签和后续字段的原有相对顺序
         for (EditableConfigValue<?> value : config.getValues()) {
             if ("tags".equals(value.id)) {
-                value.setOrder(-123);
+                value.setOrder(-122);
                 break;
             }
         }

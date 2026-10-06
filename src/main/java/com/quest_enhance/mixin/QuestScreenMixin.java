@@ -1,8 +1,10 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.common.canvas.ChapterImageSelectionAccess;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.clipboard.ChapterClipboardImage;
 import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.mojang.datafixers.util.Pair;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.platform.network.Play2ServerNetworking;
@@ -21,6 +23,7 @@ import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
@@ -28,6 +31,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
@@ -35,6 +39,29 @@ import java.util.List;
 
 @Mixin(value = QuestScreen.class, remap = false)
 public abstract class QuestScreenMixin {
+    // 范围选取只跳过显式标记的画板图片，不改变普通点击选取
+    @Inject(
+            method = "lambda$selectAllQuestsInBox$0",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void quest_enhance$skip_excluded_image_in_box_selection(
+            Rect2i selection,
+            double offset_x,
+            double offset_y,
+            Widget widget,
+            CallbackInfo callback_info
+    ) {
+        if (!(widget instanceof QuestPositionableButton positionable)
+                || !(positionable.moveAndDeleteFocus() instanceof ChapterImage image)) {
+            return;
+        }
+
+        if (((ChapterImageSelectionAccess) (Object) image).quest_enhance$is_excluded_from_box_selection()) {
+            callback_info.cancel();
+        }
+    }
+
     @Unique
     private static final String QUEST_ENHANCE_MULTI_CLIPBOARD = "<quest-enhance-multi>";
 
@@ -203,6 +230,36 @@ public abstract class QuestScreenMixin {
 
         Play2ServerNetworking.send(CreateObjectMessage.requestCreation(image, false));
         ((QuestScreen) (Object) this).refreshQuestPanel();
+        callback_info.setReturnValue(true);
+    }
+
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void quest_enhance$handle_selection_transform(
+            Key key,
+            CallbackInfoReturnable<Boolean> callback_info
+    ) {
+        if (!Widget.isCtrlKeyDown()) {
+            return;
+        }
+
+        boolean shift = Widget.isShiftKeyDown();
+        boolean alt = Minecraft.getInstance().hasAltDown();
+        QuestSelectionTransform.Operation operation = null;
+        if (key.is(82) && shift != alt) {
+            operation = shift
+                    ? QuestSelectionTransform.Operation.ROTATE_CLOCKWISE
+                    : QuestSelectionTransform.Operation.ROTATE_COUNTERCLOCKWISE;
+        } else if (key.is(77) && shift != alt) {
+            operation = shift
+                    ? QuestSelectionTransform.Operation.MIRROR_HORIZONTAL
+                    : QuestSelectionTransform.Operation.MIRROR_VERTICAL;
+        }
+
+        if (operation == null) {
+            return;
+        }
+
+        QuestSelectionTransform.apply((QuestScreen) (Object) this, operation);
         callback_info.setReturnValue(true);
     }
 

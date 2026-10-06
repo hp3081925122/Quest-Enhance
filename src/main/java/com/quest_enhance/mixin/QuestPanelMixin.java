@@ -11,6 +11,7 @@ import com.quest_enhance.client.clipboard.ChapterClipboardImage;
 import com.quest_enhance.client.media.GifSelectionScreen;
 import com.quest_enhance.client.media.VideoSelectionScreen;
 import com.quest_enhance.client.media.VideoSupport;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.quest_enhance.client.quest.TaskTypeSelectionScreen;
 import com.quest_enhance.common.ChapterBackground;
 import dev.ftb.mods.ftblibrary.client.config.editable.EditableString;
@@ -387,6 +388,14 @@ public abstract class QuestPanelMixin {
         }
         all_items.addAll(context_menu);
         all_items.remove(view_all_item);
+        if (((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_objects()
+                .stream()
+                .distinct()
+                .count() > 1L) {
+            context_menu.add(ContextMenuItem.SEPARATOR);
+            context_menu.add(QuestSelectionTransform.createMenu(this.questScreen));
+        }
         return context_menu;
     }
 
