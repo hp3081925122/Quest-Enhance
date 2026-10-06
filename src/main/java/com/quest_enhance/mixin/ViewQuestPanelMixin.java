@@ -1,10 +1,13 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.client.description.DescriptionComponentMenu;
 import com.quest_enhance.client.description.PlayerPersistentDataClient;
 import com.quest_enhance.client.description.QuestDescriptionGif;
 import com.quest_enhance.client.description.QuestDescriptionWidthContext;
+import com.quest_enhance.common.QuestScrollPaging;
 import dev.ftb.mods.ftblibrary.ui.BlankPanel;
+import dev.ftb.mods.ftblibrary.ui.ModalPanel;
 import dev.ftb.mods.ftblibrary.ui.Panel;
 import dev.ftb.mods.ftblibrary.ui.TextField;
 import dev.ftb.mods.ftblibrary.ui.Widget;
@@ -17,21 +20,94 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 @Mixin(value = ViewQuestPanel.class, remap = false)
-public abstract class ViewQuestPanelMixin {
+public abstract class ViewQuestPanelMixin extends ModalPanel {
+    protected ViewQuestPanelMixin(Panel parent) {
+        super(parent);
+    }
+
     @Shadow
     private BlankPanel panelText;
 
     @Shadow
     private Quest quest;
+
+    @Shadow
+    private List<?> pageIndices;
+
+    @Shadow
+    private long lastScrollTime;
+
+    @Shadow
+    private int getCurrentPage() {
+        throw new AssertionError();
+    }
+
+    @Shadow
+    private void setCurrentPage(int page) {
+        throw new AssertionError();
+    }
+
+    /**
+     * 按当前 FTB Quests 四参数入口保留正文滚动，并单独控制翻页分支。
+     */
+    @Overwrite
+    @Override
+    public boolean mouseScrolled(
+            double mouse_x,
+            double mouse_y,
+            double horizontal_delta,
+            double vertical_delta
+    ) {
+        long now = System.currentTimeMillis();
+        boolean disabled = this.quest != null && QuestScrollPaging.isDisabled(this.quest);
+        boolean panel_handled = super.mouseScrolled(mouse_x, mouse_y, horizontal_delta, vertical_delta);
+        QuestEnhance.LOGGER.debug(
+                "Quest scroll paging input: disabled={}, panelHandled={}, delta={}",
+                disabled,
+                panel_handled,
+                vertical_delta
+        );
+
+        if (panel_handled) {
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        if (disabled) {
+            return true;
+        }
+
+        if (now - this.lastScrollTime <= 500L) {
+            return false;
+        }
+
+        if (vertical_delta < 0.0D && this.getCurrentPage() < this.pageIndices.size() - 1) {
+            this.setCurrentPage(this.getCurrentPage() + 1);
+            this.refreshWidgets();
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        if (vertical_delta > 0.0D && this.getCurrentPage() > 0) {
+            this.setCurrentPage(this.getCurrentPage() - 1);
+            this.refreshWidgets();
+            this.lastScrollTime = now;
+            return true;
+        }
+
+        return false;
+    }
 
     // 在打开描述编辑器前保存节点介绍区域扣除边距后的实际宽度
     @Inject(method = "editDescription", at = @At("HEAD"))

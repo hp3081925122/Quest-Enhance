@@ -59,7 +59,8 @@ public final class DescriptionComponentMenu {
     // 打开统一描述组件菜单，只补充 FTB 原生工具栏没有的功能
     public static void open(Panel parent, MultilineTextEditorAccess editor) {
         // 导航分组包含网页、指定页跳转、复制和开发者命令
-        List<ContextMenuItem> navigation = List.of(
+        List<ContextMenuItem> navigation = new ArrayList<>();
+        navigation.addAll(List.of(
                 new ContextMenuItem(
                         Component.translatable("quest_enhance.description_component.web_link"),
                         Icons.GLOBE,
@@ -85,7 +86,7 @@ public final class DescriptionComponentMenu {
                         Icons.CONTROLLER,
                         button -> openTextComponentConfig(parent, editor, TextAction.COMMAND)
                 ).setYesNoText(Component.translatable("quest_enhance.description_component.command.warning"))
-        );
+        ));
 
         // 媒体分组提供网络图片、物品展示和已有视频能力
         List<ContextMenuItem> media = new ArrayList<>(List.of(
@@ -175,7 +176,8 @@ public final class DescriptionComponentMenu {
         );
 
         // 使用 FTB 原生三级上下文菜单展示全部组件类别
-        parent.getGui().openContextMenu(List.of(
+        List<ContextMenuItem> root_items = new ArrayList<>();
+        root_items.addAll(List.of(
                 ContextMenuItem.subMenu(
                         Component.translatable("quest_enhance.description_component.navigation"),
                         Icons.GLOBE,
@@ -192,6 +194,7 @@ public final class DescriptionComponentMenu {
                         text
                 )
         ));
+        parent.getGui().openContextMenu(root_items);
     }
 
     // 识别独立的快捷 JSON 组件，并用与插入时相同的配置页编辑原值

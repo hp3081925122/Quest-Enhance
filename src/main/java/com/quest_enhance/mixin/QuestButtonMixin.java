@@ -9,8 +9,11 @@ import com.quest_enhance.client.quest.BulkQuestEdit;
 import com.quest_enhance.client.quest.KillTaskEntityPreview;
 import com.quest_enhance.client.quest.QuestBackgroundMenus;
 import com.quest_enhance.client.quest.QuestEntityModel;
+import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.quest_enhance.client.quest.QuestVideoData;
+import dev.ftb.mods.ftbquests.client.gui.ContextMenuBuilder;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftblibrary.ui.Button;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
@@ -19,6 +22,7 @@ import dev.ftb.mods.ftbquests.client.gui.quests.QuestLinkButton;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -141,22 +145,40 @@ public abstract class QuestButtonMixin {
             QuestBackgroundMenus.appendBulk(context_menu, this.questScreen);
         }
         DecorativeLineMenus.append(context_menu, this.questScreen, clicked_object);
-        return HiddenDependencyLineMenus.append(context_menu, this.questScreen, clicked_object);
+        List<ContextMenuItem> appended_menu = HiddenDependencyLineMenus.append(
+                context_menu,
+                this.questScreen,
+                clicked_object
+        );
+        if (((QuestScreenAccessor) (Object) this.questScreen)
+                .quest_enhance$get_selected_objects()
+                .stream()
+                .distinct()
+                .count() > 1L) {
+            int separator_index = appended_menu.indexOf(ContextMenuItem.SEPARATOR);
+            if (separator_index < 0) {
+                separator_index = appended_menu.size();
+            }
+            appended_menu.add(separator_index, QuestSelectionTransform.createMenu(this.questScreen));
+        }
+        return appended_menu;
     }
 
-    // 在未选中任务的原版右键菜单顶部加入前置线编辑入口
-    @ModifyArg(
+    // 在当前版本创建标准右键菜单时加入前置线与任务背景入口
+    @Redirect(
             method = "onClicked",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;insertAtTop(Ljava/util/Collection;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
-            ),
-            index = 0
+                    target = "Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;create(Ldev/ftb/mods/ftbquests/quest/QuestObjectBase;Ldev/ftb/mods/ftbquests/client/gui/quests/QuestScreen;Ldev/ftb/mods/ftblibrary/ui/Button;)Ldev/ftb/mods/ftbquests/client/gui/ContextMenuBuilder;"
+            )
     )
-    private Collection<ContextMenuItem> quest_enhance$add_dependency_line_to_standard_menu(
-        Collection<ContextMenuItem> context_menu
+    private ContextMenuBuilder quest_enhance$add_dependency_line_to_standard_menu(
+            QuestObjectBase object,
+            QuestScreen screen,
+            Button button
     ) {
-        List<ContextMenuItem> appended_menu = new java.util.ArrayList<>(context_menu);
+        ContextMenuBuilder context_menu_builder = ContextMenuBuilder.create(object, screen, button);
+        List<ContextMenuItem> appended_menu = new java.util.ArrayList<>();
         Movable clicked_object = (Object) this instanceof QuestLinkButton
                 ? ((QuestLinkButtonAccessor) (Object) this).quest_enhance$get_link()
                 : this.quest;
@@ -164,7 +186,9 @@ public abstract class QuestButtonMixin {
             appended_menu.add(0, QuestBackgroundMenus.createSingle(this.quest, this.questScreen));
             appended_menu.add(1, QuestBackgroundMenus.createViewSingle(this.quest, this.questScreen));
         }
-        return HiddenDependencyLineMenus.append(appended_menu, this.questScreen, clicked_object);
+        return context_menu_builder.insertAtTop(
+                HiddenDependencyLineMenus.append(appended_menu, this.questScreen, clicked_object)
+        );
     }
 
     // 在原版任务框底色之后、图标之前绘制普通任务节点的自定义背景图片

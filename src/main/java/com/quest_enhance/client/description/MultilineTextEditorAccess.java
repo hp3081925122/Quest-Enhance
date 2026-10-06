@@ -14,4 +14,5 @@ public interface MultilineTextEditorAccess {
 
     // 使用当前版本注册表上下文插入原版文字组件
     void quest_enhance$insert_component(Component component);
+
 }

@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.common.canvas.ChapterImageSelectionAccess;
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.client.canvas.ChapterCanvasGif;
 import com.quest_enhance.client.canvas.ChapterCanvasText;
@@ -146,6 +147,13 @@ public abstract class ChapterImageMixin {
         // 特殊画布元素都允许直接修改位置
         config.addDouble("x", this.x, value -> this.x = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
         config.addDouble("y", this.y, value -> this.y = value, 0.0, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+        ChapterImageSelectionAccess selection_access = (ChapterImageSelectionAccess) (Object) this;
+        config.addBool(
+                "exclude_from_box_selection",
+                selection_access.quest_enhance$is_excluded_from_box_selection(),
+                selection_access::quest_enhance$set_excluded_from_box_selection,
+                false
+        ).setNameKey("quest_enhance.chapter_image.exclude_from_box_selection");
         if (decorative_anchor) {
             callback_info.cancel();
             return;
@@ -186,6 +194,18 @@ public abstract class ChapterImageMixin {
                 null
         )).setNameKey("ftbquests.dependency");
         callback_info.cancel();
+    }
+
+    // 原生普通图片也显示范围选取开关
+    @Inject(method = "fillConfigGroup", at = @At("TAIL"))
+    private void quest_enhance$add_box_selection_config(ConfigGroup config, CallbackInfo callback_info) {
+        ChapterImageSelectionAccess selection_access = (ChapterImageSelectionAccess) (Object) this;
+        config.addBool(
+                "exclude_from_box_selection",
+                selection_access.quest_enhance$is_excluded_from_box_selection(),
+                selection_access::quest_enhance$set_excluded_from_box_selection,
+                false
+        ).setNameKey("quest_enhance.chapter_image.exclude_from_box_selection");
     }
 
     // 特殊画布元素不显示原生图片宽高修复按钮
