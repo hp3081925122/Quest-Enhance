@@ -109,6 +109,9 @@ dependencies {
     runtimeOnly(fg.deobf("dev.ftb.mods:ftb-quests-forge:${ftb_quests_version}")) {
         transitive = false
     }
+    runtimeOnly(fg.deobf("curse.maven:quests-additions-580129:6004490")) {
+        transitive = false
+    }
     runtimeOnly fg.deobf("maven.modrinth:watermedia:${watermedia_version}") {
         transitive = false
     }
