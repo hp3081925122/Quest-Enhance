@@ -1,5 +1,6 @@
 package com.quest_enhance.mixin;
 
+import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.access.KillTaskAccessor;
 import com.quest_enhance.compat.QuestsAdditionsCompatibility;
 import com.quest_enhance.config.EntityTagConfig;
@@ -84,12 +85,11 @@ public abstract class KillTaskMixin implements KillTaskAccessor {
         if (QuestsAdditionsCompatibility.isKillNbtTask(this)) {
             return;
         }
-        buffer.writeUtf(
-                this.quest_enhance$entity_type_tag == null
-                        ? ""
-                        : this.quest_enhance$entity_type_tag.location().toString(),
-                32767
-        );
+        String entity_tag = this.quest_enhance$entity_type_tag == null
+                ? ""
+                : this.quest_enhance$entity_type_tag.location().toString();
+        buffer.writeUtf(entity_tag, 32767);
+        QuestEnhance.LOGGER.debug("Encoded kill task entity tag: type={}, tag={}", getClass().getName(), entity_tag);
     }
 
     @Inject(method = "readNetData", at = @At("TAIL"))
@@ -100,9 +100,9 @@ public abstract class KillTaskMixin implements KillTaskAccessor {
         if (QuestsAdditionsCompatibility.isKillNbtTask(this)) {
             return;
         }
-        this.quest_enhance$entity_type_tag = quest_enhance$parse_entity_type_tag(
-                buffer.readUtf(32767)
-        );
+        String entity_tag = buffer.readUtf(32767);
+        this.quest_enhance$entity_type_tag = quest_enhance$parse_entity_type_tag(entity_tag);
+        QuestEnhance.LOGGER.debug("Decoded kill task entity tag: type={}, tag={}", getClass().getName(), entity_tag);
     }
 
     @Inject(method = "fillConfigGroup", at = @At("TAIL"))

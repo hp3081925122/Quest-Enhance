@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 
 public final class QuestEnhanceNetwork {
     private static final int MAXIMUM_KEYS = 64;
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(QuestEnhance.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -53,6 +53,7 @@ public final class QuestEnhanceNetwork {
                 .decoder(PlayerPersistentDataResponse::decode)
                 .consumerMainThread(PlayerPersistentDataResponse::handle)
                 .add();
+        QuestEnhance.LOGGER.debug("Registered Quest Enhance network protocol {} with shared kill-task tag serialization", PROTOCOL_VERSION);
     }
 
     // 仅请求当前任务描述实际引用的数据键，避免同步整份玩家 NBT。

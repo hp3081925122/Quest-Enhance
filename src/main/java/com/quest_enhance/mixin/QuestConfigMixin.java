@@ -1,6 +1,7 @@
 package com.quest_enhance.mixin;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.QuestTaskRequirement;
 import com.quest_enhance.client.media.VideoConfig;
 import com.quest_enhance.client.media.VideoSupport;
 import com.quest_enhance.client.quest.QuestEntityModel;
@@ -107,6 +108,15 @@ public abstract class QuestConfigMixin {
                 },
                 false
         ).setNameKey("quest_enhance.disable_scroll_paging").setOrder(-123);
+
+        config.addInt(
+                "minimum_tasks",
+                QuestTaskRequirement.getMinimumTaskCount(quest),
+                count -> QuestTaskRequirement.setMinimumTaskCount(quest, count),
+                0,
+                0,
+                Integer.MAX_VALUE
+        ).setNameKey("quest_enhance.minimum_tasks").setOrder(-121);
 
         // 给模型项腾出图标下方的位置，并保持标签和后续字段的原有相对顺序
         for (ConfigValue<?> value : config.getValues()) {
