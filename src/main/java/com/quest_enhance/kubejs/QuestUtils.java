@@ -2,6 +2,7 @@ package com.quest_enhance.kubejs;
 
 import com.quest_enhance.DecorativeAnchor;
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.QuestTaskRequirement;
 import com.quest_enhance.common.canvas.ChapterCanvasData;
 import com.quest_enhance.common.description.QuestDescriptionComponents;
 import com.quest_enhance.mixin.ChapterAccessor;
@@ -773,6 +774,33 @@ public final class QuestUtils {
     public static boolean setQuestOptional(String questId, boolean optional) {
         Long parsedId = parseId(questId);
         return parsedId != null && setQuestOptional(parsedId, optional);
+    }
+
+    public static int getMinimumTaskCount(long questId) {
+        Quest quest = getQuest(questId);
+        return quest == null ? 0 : QuestTaskRequirement.getMinimumTaskCount(quest);
+    }
+
+    public static int getMinimumTaskCount(String questId) {
+        Long parsedId = parseId(questId);
+        return parsedId == null ? 0 : getMinimumTaskCount(parsedId);
+    }
+
+    public static boolean setMinimumTaskCount(long questId, int count) {
+        ServerQuestFile file = getServerFile();
+        Quest quest = file == null ? null : file.getQuest(questId);
+        if (quest == null || count < 0) {
+            return false;
+        }
+        QuestTaskRequirement.setMinimumTaskCount(quest, count);
+        syncEditedObject(file, quest);
+        QuestTaskRequirement.checkCompletionAfterEdit(quest);
+        return true;
+    }
+
+    public static boolean setMinimumTaskCount(String questId, int count) {
+        Long parsedId = parseId(questId);
+        return parsedId != null && setMinimumTaskCount(parsedId, count);
     }
 
     public static boolean setTaskOptional(long taskId, boolean optional) {

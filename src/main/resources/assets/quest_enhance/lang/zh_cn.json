@@ -1,4 +1,7 @@
 {
+  "quest_enhance.minimum_tasks": "最低完成任务数量",
+  "quest_enhance.minimum_tasks.tooltip": "完成指定数量的任务目标即可完成此任务节点。0 使用 FTB Quests 原来的完成规则；大于目标总数时按总数计算。可选目标只有实际完成后才计数，前置条件和顺序要求仍然生效。",
+
   "quest_enhance.none": "无",
   "quest_enhance.description_component.add": "插入组件",
   "quest_enhance.disable_scroll_paging": "关闭滚轮翻页",
