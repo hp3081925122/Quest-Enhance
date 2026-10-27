@@ -1,4 +1,7 @@
 {
+  "quest_enhance.minimum_tasks": "Minimum Completed Tasks",
+  "quest_enhance.minimum_tasks.tooltip": "Complete this many task objectives to finish the quest. 0 keeps the original FTB Quests completion rules. Values above the total task count require all tasks. Optional tasks count only when completed. Dependencies and sequential task requirements still apply.",
+
   "quest_enhance.none": "None",
   "quest_enhance.description_component.add": "Insert Component",
   "quest_enhance.disable_scroll_paging": "Disable Scroll Paging",

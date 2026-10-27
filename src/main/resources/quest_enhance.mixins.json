@@ -11,6 +11,7 @@
     "ChapterImageSelectionMixin",
     "ChapterMixin",
     "QuestMixin",
+    "QuestTaskRequirementEditMixin",
     "QuestObjectBaseMixin",
     "QuestObjectAccessor",
     "TaskCompletionMixin"
