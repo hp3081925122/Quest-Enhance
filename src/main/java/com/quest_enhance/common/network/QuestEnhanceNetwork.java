@@ -1,7 +1,9 @@
 package com.quest_enhance.common.network;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.QuestExtraDataClient;
 import com.quest_enhance.client.description.PlayerPersistentDataClient;
+import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import com.quest_enhance.common.description.PlayerPersistentDataDescription;
 import com.quest_enhance.common.integration.KubeJSPersistentDataBridge;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -27,7 +29,24 @@ public final class QuestEnhanceNetwork {
 
     // 使用 NeoForge 的原生负载注册玩家持久化数据查询包。
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("1")
+        // 2：扩展字段改走独立数据包，旧版本客户端与服务端不能混用
+        event.registrar("2")
+                .playToServer(QuestExtraDataRequest.TYPE, QuestExtraDataRequest.STREAM_CODEC, (payload, context) -> {
+                    if (!(context.player() instanceof ServerPlayer player) || ServerQuestFile.INSTANCE == null) {
+                        return;
+                    }
+                    List<QuestExtraDataSync.Entry> entries = QuestExtraDataSync.collect(ServerQuestFile.INSTANCE);
+                    for (int start = 0; start < entries.size(); start += QuestExtraDataSync.MAXIMUM_ENTRIES_PER_PACKET) {
+                        int end = Math.min(entries.size(), start + QuestExtraDataSync.MAXIMUM_ENTRIES_PER_PACKET);
+                        PacketDistributor.sendToPlayer(
+                                player,
+                                new QuestExtraDataResponse(List.copyOf(entries.subList(start, end)))
+                        );
+                    }
+                })
+                .playToClient(QuestExtraDataResponse.TYPE, QuestExtraDataResponse.STREAM_CODEC, (payload, context) ->
+                        QuestExtraDataClient.receive(payload.entries)
+                )
                 .playToServer(PlayerPersistentDataRequest.TYPE, PlayerPersistentDataRequest.STREAM_CODEC, (payload, context) -> {
                     if (!(context.player() instanceof ServerPlayer player) || payload.keys.isEmpty()) {
                         return;
@@ -50,6 +69,11 @@ public final class QuestEnhanceNetwork {
         }
     }
 
+    // 客户端收到 FTB 任务书同步后，单独向服务端请求 Quest Enhance 扩展字段
+    public static void requestQuestExtraData() {
+        PacketDistributor.sendToServer(new QuestExtraDataRequest());
+    }
+
     private static CompoundTag selectKeys(CompoundTag source, Collection<String> keys) {
         CompoundTag selected = new CompoundTag();
         if (source == null) {
@@ -62,6 +86,34 @@ public final class QuestEnhanceNetwork {
             }
         }
         return selected;
+    }
+
+    private record QuestExtraDataRequest() implements CustomPacketPayload {
+        private static final Type<QuestExtraDataRequest> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath(QuestEnhance.MOD_ID, "quest_extra_data_request")
+        );
+        private static final StreamCodec<RegistryFriendlyByteBuf, QuestExtraDataRequest> STREAM_CODEC =
+                StreamCodec.unit(new QuestExtraDataRequest());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    private record QuestExtraDataResponse(List<QuestExtraDataSync.Entry> entries) implements CustomPacketPayload {
+        private static final Type<QuestExtraDataResponse> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath(QuestEnhance.MOD_ID, "quest_extra_data_response")
+        );
+        private static final StreamCodec<RegistryFriendlyByteBuf, QuestExtraDataResponse> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> QuestExtraDataSync.write(buffer, payload.entries),
+                buffer -> new QuestExtraDataResponse(QuestExtraDataSync.read(buffer))
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
     }
 
     private record PlayerPersistentDataRequest(List<String> keys) implements CustomPacketPayload {

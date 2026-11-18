@@ -33,21 +33,5 @@ public abstract class BaseQuestFileMixin {
         ChapterSidebarBackground.readData((BaseQuestFile) (Object) this, tag);
     }
 
-    // 将章节侧边栏背景图片写入任务书网络同步数据
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_sidebar_background_net(
-            RegistryFriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        ChapterSidebarBackground.writeNetData((BaseQuestFile) (Object) this, buffer);
-    }
 
-    // 从任务书网络同步数据恢复章节侧边栏背景图片
-    @Inject(method = "readNetData", at = @At("TAIL"))
-    private void quest_enhance$read_sidebar_background_net(
-            RegistryFriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        ChapterSidebarBackground.readNetData((BaseQuestFile) (Object) this, buffer);
-    }
 }

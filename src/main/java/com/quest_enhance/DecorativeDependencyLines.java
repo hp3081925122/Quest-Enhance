@@ -5,7 +5,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -140,35 +139,7 @@ public final class DecorativeDependencyLines {
         }
     }
 
-    // 将装饰线写入 FTB Quests 的章节网络数据
-    public static void writeNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        List<Line> lines = get(chapter);
-        buffer.writeVarInt(lines.size());
-        for (Line line : lines) {
-            buffer.writeVarInt(line.nodes().size());
-            for (String node : line.nodes()) {
-                buffer.writeUtf(node, 128);
-            }
-        }
-    }
 
-    // 从 FTB Quests 的章节网络数据恢复装饰线
-    public static void readNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        List<Line> lines = get(chapter);
-        lines.clear();
-        int line_count = Math.max(0, Math.min(buffer.readVarInt(), 4096));
-        for (int index = 0; index < line_count; index++) {
-            int node_count = Math.max(0, Math.min(buffer.readVarInt(), 4096));
-            List<String> nodes = new ArrayList<>(node_count);
-            for (int node_index = 0; node_index < node_count; node_index++) {
-                nodes.add(buffer.readUtf(128));
-            }
-            List<String> normalized = normalize(nodes);
-            if (normalized.size() >= 2) {
-                lines.add(new Line(normalized));
-            }
-        }
-    }
 
     // 按首次出现顺序去除重复和空节点键
     private static List<String> normalize(List<String> node_keys) {

@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import dev.ftb.mods.ftbquests.quest.Quest;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
@@ -46,20 +45,5 @@ public final class QuestViewBackground {
         set(quest, ResourceLocation.tryParse(tag.getString(NBT_KEY)));
     }
 
-    // 将任务详情面板背景图片写入任务书网络同步数据
-    public static void writeNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        Optional<ResourceLocation> resource_location = get(quest);
-        buffer.writeBoolean(resource_location.isPresent());
-        resource_location.ifPresent(value -> buffer.writeUtf(value.toString(), 256));
-    }
 
-    // 从任务书网络同步数据恢复任务详情面板背景图片
-    public static void readNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        if (!buffer.readBoolean()) {
-            set(quest, null);
-            return;
-        }
-
-        set(quest, ResourceLocation.tryParse(buffer.readUtf(256)));
-    }
 }

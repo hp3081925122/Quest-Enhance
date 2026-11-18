@@ -99,7 +99,8 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             mod_license             : mod_license,
             mod_version             : mod_version,
             mod_authors             : mod_authors,
-            ftb_quests_version      : ftb_quests_version
+            ftb_quests_version      : ftb_quests_version,
+            ftb_quests_min_version  : ftb_quests_min_version
     ]
 
     inputs.properties replace_properties

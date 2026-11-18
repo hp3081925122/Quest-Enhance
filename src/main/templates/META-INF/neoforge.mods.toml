@@ -30,7 +30,7 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "ftbquests"
 type = "required"
-versionRange = "[${ftb_quests_version},)"
+versionRange = "[${ftb_quests_min_version},)"
 ordering = "AFTER"
 side = "BOTH"
 

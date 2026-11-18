@@ -8,7 +8,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -181,31 +180,7 @@ public final class ChapterPrerequisites {
         replace(chapter, ids);
     }
 
-    // 将章节任务节点前置追加到 FTB Quests 的章节网络数据
-    public static void writeNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        List<Long> ids = getPrerequisiteIds(chapter);
-        buffer.writeVarInt(ids.size());
-        for (long id : ids) {
-            buffer.writeLong(id);
-        }
-    }
 
-    // 从 FTB Quests 的章节网络数据恢复任务节点前置
-    public static void readNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        int count = buffer.readVarInt();
-        if (count < 0) {
-            throw new IllegalArgumentException("Negative chapter quest prerequisite count");
-        }
-
-        LinkedHashSet<Long> ids = new LinkedHashSet<>();
-        for (int index = 0; index < count; index++) {
-            long id = buffer.readLong();
-            if (id != chapter.getId()) {
-                ids.add(id);
-            }
-        }
-        replace(chapter, ids);
-    }
 
     // 删除任务节点时清理所有章节对它的前置引用
     public static void removeQuest(Quest quest) {

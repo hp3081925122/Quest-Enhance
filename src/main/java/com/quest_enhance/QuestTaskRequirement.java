@@ -7,7 +7,6 @@ import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.Task;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
@@ -115,11 +114,5 @@ public final class QuestTaskRequirement {
         setMinimumTaskCount(quest, tag.getInt(NBT_KEY));
     }
 
-    public static void writeNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        buffer.writeVarInt(getMinimumTaskCount(quest));
-    }
 
-    public static void readNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        setMinimumTaskCount(quest, buffer.readVarInt());
-    }
 }

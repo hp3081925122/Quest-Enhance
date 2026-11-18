@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
@@ -46,20 +45,5 @@ public final class ChapterBackground {
         set(chapter, ResourceLocation.tryParse(tag.getString(NBT_KEY)));
     }
 
-    // 将章节背景图片追加到 FTB Quests 的编辑同步数据
-    public static void writeNetData(Chapter chapter, RegistryFriendlyByteBuf buffer) {
-        Optional<ResourceLocation> resource_location = get(chapter);
-        buffer.writeBoolean(resource_location.isPresent());
-        resource_location.ifPresent(value -> buffer.writeUtf(value.toString(), 256));
-    }
 
-    // 从 FTB Quests 的编辑同步数据恢复章节背景图片
-    public static void readNetData(Chapter chapter, RegistryFriendlyByteBuf buffer) {
-        if (!buffer.readBoolean()) {
-            set(chapter, null);
-            return;
-        }
-
-        set(chapter, ResourceLocation.tryParse(buffer.readUtf(256)));
-    }
 }

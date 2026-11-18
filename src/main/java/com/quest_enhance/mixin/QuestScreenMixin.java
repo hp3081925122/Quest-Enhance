@@ -27,7 +27,6 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -37,6 +36,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
@@ -44,30 +44,30 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.Consumer;
 
 @Mixin(value = QuestScreen.class, remap = false)
 public abstract class QuestScreenMixin {
     // 范围选取只跳过显式标记的画板图片，不改变普通点击选取
-    @Inject(
-            method = "lambda$selectAllQuestsInBox$39",
-            at = @At("HEAD"),
-            cancellable = true
+    @ModifyArg(
+            method = "selectAllQuestsInBox",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/List;forEach(Ljava/util/function/Consumer;)V"
+            ),
+            index = 0
     )
-    private void quest_enhance$skip_excluded_image_in_box_selection(
-            Rect2i selection,
-            double offset_x,
-            double offset_y,
-            Widget widget,
-            CallbackInfo callback_info
+    private Consumer<? super Widget> quest_enhance$skip_excluded_image_in_box_selection(
+            Consumer<? super Widget> consumer
     ) {
-        if (!(widget instanceof QuestPositionableButton positionable)
-                || !(positionable.moveAndDeleteFocus() instanceof ChapterImage image)) {
-            return;
-        }
-
-        if (((ChapterImageSelectionAccess) (Object) image).quest_enhance$is_excluded_from_box_selection()) {
-            callback_info.cancel();
-        }
+        return widget -> {
+            if (widget instanceof QuestPositionableButton positionable
+                    && positionable.moveAndDeleteFocus() instanceof ChapterImage image
+                    && ((ChapterImageSelectionAccess) (Object) image).quest_enhance$is_excluded_from_box_selection()) {
+                return;
+            }
+            consumer.accept(widget);
+        };
     }
 
     @Unique
