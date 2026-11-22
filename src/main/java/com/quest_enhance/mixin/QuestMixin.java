@@ -7,7 +7,6 @@ import com.quest_enhance.QuestViewBackground;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -35,23 +34,7 @@ public abstract class QuestMixin {
         QuestTaskRequirement.readData((Quest) (Object) this, tag);
     }
 
-    // 将任务节点背景图片写入任务书网络同步数据
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_quest_background_net(FriendlyByteBuf buffer, CallbackInfo callback_info) {
-        QuestBackground.writeNetData((Quest) (Object) this, buffer);
-        QuestViewBackground.writeNetData((Quest) (Object) this, buffer);
-        QuestScrollPaging.writeNetData((Quest) (Object) this, buffer);
-        QuestTaskRequirement.writeNetData((Quest) (Object) this, buffer);
-    }
-
-    // 从任务书网络同步数据恢复任务节点背景图片
-    @Inject(method = "readNetData", at = @At("TAIL"))
-    private void quest_enhance$read_quest_background_net(FriendlyByteBuf buffer, CallbackInfo callback_info) {
-        QuestBackground.readNetData((Quest) (Object) this, buffer);
-        QuestViewBackground.readNetData((Quest) (Object) this, buffer);
-        QuestScrollPaging.readNetData((Quest) (Object) this, buffer);
-        QuestTaskRequirement.readNetData((Quest) (Object) this, buffer);
-    }
+    // 网络同步改由 QuestExtraDataSync 独立数据包完成，不再向 FTB 的同步流追加字节
 
     @Inject(method = "isCompletedRaw", at = @At("HEAD"), cancellable = true)
     private void quest_enhance$check_minimum_tasks(TeamData teamData, CallbackInfoReturnable<Boolean> callbackInfo) {

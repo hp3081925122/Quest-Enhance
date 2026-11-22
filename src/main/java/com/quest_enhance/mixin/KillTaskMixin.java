@@ -1,6 +1,5 @@
 package com.quest_enhance.mixin;
 
-import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.access.KillTaskAccessor;
 import com.quest_enhance.compat.QuestsAdditionsCompatibility;
 import com.quest_enhance.config.EntityTagConfig;
@@ -12,7 +11,6 @@ import dev.ftb.mods.ftbquests.quest.task.KillTask;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -48,6 +46,12 @@ public abstract class KillTaskMixin implements KillTaskAccessor {
         return this.quest_enhance$entity_type_tag;
     }
 
+    @Override
+    @Unique
+    public void quest_enhance$set_entity_type_tag_id(String value) {
+        this.quest_enhance$entity_type_tag = quest_enhance$parse_entity_type_tag(value);
+    }
+
     @Inject(method = "writeData", at = @At("TAIL"))
     private void quest_enhance$write_entity_type_tag(
             CompoundTag tag,
@@ -77,33 +81,7 @@ public abstract class KillTaskMixin implements KillTaskAccessor {
         );
     }
 
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_entity_type_tag_net(
-            FriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        if (QuestsAdditionsCompatibility.isKillNbtTask(this)) {
-            return;
-        }
-        String entity_tag = this.quest_enhance$entity_type_tag == null
-                ? ""
-                : this.quest_enhance$entity_type_tag.location().toString();
-        buffer.writeUtf(entity_tag, 32767);
-        QuestEnhance.LOGGER.debug("Encoded kill task entity tag: type={}, tag={}", getClass().getName(), entity_tag);
-    }
 
-    @Inject(method = "readNetData", at = @At("TAIL"))
-    private void quest_enhance$read_entity_type_tag_net(
-            FriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        if (QuestsAdditionsCompatibility.isKillNbtTask(this)) {
-            return;
-        }
-        String entity_tag = buffer.readUtf(32767);
-        this.quest_enhance$entity_type_tag = quest_enhance$parse_entity_type_tag(entity_tag);
-        QuestEnhance.LOGGER.debug("Decoded kill task entity tag: type={}, tag={}", getClass().getName(), entity_tag);
-    }
 
     @Inject(method = "fillConfigGroup", at = @At("TAIL"))
     private void quest_enhance$add_entity_type_tag_config(

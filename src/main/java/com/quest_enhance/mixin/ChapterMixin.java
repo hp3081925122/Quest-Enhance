@@ -11,7 +11,6 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -39,28 +38,7 @@ public abstract class ChapterMixin {
         ChapterBackground.readData((Chapter) (Object) this, tag);
     }
 
-    // 将装饰线追加到 FTB Quests 的编辑同步数据
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_decorative_lines_net(
-            FriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        DecorativeDependencyLines.writeNetData((Chapter) (Object) this, buffer);
-        HiddenDependencyLines.writeNetData((Chapter) (Object) this, buffer);
-        ChapterBackground.writeNetData((Chapter) (Object) this, buffer);
-    }
 
-    // 从 FTB Quests 的编辑同步数据恢复装饰线
-    @Inject(method = "readNetData", at = @At("TAIL"))
-    private void quest_enhance$read_decorative_lines_net(
-            FriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        DecorativeDependencyLines.readNetData((Chapter) (Object) this, buffer);
-        HiddenDependencyLines.readNetData((Chapter) (Object) this, buffer);
-        ChapterBackground.readNetData((Chapter) (Object) this, buffer);
-        ChapterPrerequisites.readNetData((Chapter) (Object) this, buffer);
-    }
 
     // 将章节前置写入任务文件存档
     @Inject(method = "writeData", at = @At("RETURN"))
@@ -80,14 +58,6 @@ public abstract class ChapterMixin {
         ChapterPrerequisites.readData((Chapter) (Object) this, tag);
     }
 
-    // 将章节前置写入 FTB Quests 的编辑同步数据
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_chapter_prerequisites_net(
-            FriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        ChapterPrerequisites.writeNetData((Chapter) (Object) this, buffer);
-    }
 
     // 在普通玩家界面中要求章节任务节点前置全部完成，并允许已解锁的空章节显示
     @Inject(method = "isVisible", at = @At("RETURN"), cancellable = true)

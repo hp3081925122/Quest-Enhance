@@ -2,7 +2,6 @@ package com.quest_enhance;
 
 import dev.ftb.mods.ftbquests.quest.Quest;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -39,13 +38,5 @@ public final class QuestScrollPaging {
         setDisabled(quest, tag.getBoolean(NBT_KEY));
     }
 
-    // 将任务节点开关写入任务书网络同步数据
-    public static void writeNetData(Quest quest, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(isDisabled(quest));
-    }
 
-    // 从任务书网络同步数据恢复任务节点开关
-    public static void readNetData(Quest quest, FriendlyByteBuf buffer) {
-        setDisabled(quest, buffer.readBoolean());
-    }
 }

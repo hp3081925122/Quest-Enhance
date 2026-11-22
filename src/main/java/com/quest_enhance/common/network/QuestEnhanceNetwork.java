@@ -1,9 +1,11 @@
 package com.quest_enhance.common.network;
 
 import com.quest_enhance.QuestEnhance;
+import com.quest_enhance.client.QuestExtraDataClient;
 import com.quest_enhance.client.description.PlayerPersistentDataClient;
 import com.quest_enhance.common.description.PlayerPersistentDataDescription;
 import com.quest_enhance.common.integration.KubeJSPersistentDataBridge;
+import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -25,7 +27,8 @@ import java.util.function.Supplier;
 
 public final class QuestEnhanceNetwork {
     private static final int MAXIMUM_KEYS = 64;
-    private static final String PROTOCOL_VERSION = "2";
+    // 3：扩展字段改走独立数据包，旧版本客户端与服务端不能混用
+    private static final String PROTOCOL_VERSION = "3";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(QuestEnhance.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -53,7 +56,22 @@ public final class QuestEnhanceNetwork {
                 .decoder(PlayerPersistentDataResponse::decode)
                 .consumerMainThread(PlayerPersistentDataResponse::handle)
                 .add();
-        QuestEnhance.LOGGER.debug("Registered Quest Enhance network protocol {} with shared kill-task tag serialization", PROTOCOL_VERSION);
+        CHANNEL.messageBuilder(QuestExtraDataRequest.class, 2, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(QuestExtraDataRequest::encode)
+                .decoder(QuestExtraDataRequest::decode)
+                .consumerMainThread(QuestExtraDataRequest::handle)
+                .add();
+        CHANNEL.messageBuilder(QuestExtraDataResponse.class, 3, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(QuestExtraDataResponse::encode)
+                .decoder(QuestExtraDataResponse::decode)
+                .consumerMainThread(QuestExtraDataResponse::handle)
+                .add();
+        QuestEnhance.LOGGER.debug("Registered Quest Enhance network protocol {}", PROTOCOL_VERSION);
+    }
+
+    // 客户端收到 FTB 任务书同步后，单独向服务端请求 Quest Enhance 扩展字段
+    public static void requestQuestExtraData() {
+        CHANNEL.sendToServer(new QuestExtraDataRequest());
     }
 
     // 仅请求当前任务描述实际引用的数据键，避免同步整份玩家 NBT。
@@ -144,6 +162,41 @@ public final class QuestEnhanceNetwork {
                     message.forgeData,
                     message.kubejsData
             ));
+        }
+    }
+
+    private record QuestExtraDataRequest() {
+        private void encode(FriendlyByteBuf buffer) {
+        }
+
+        private static QuestExtraDataRequest decode(FriendlyByteBuf buffer) {
+            return new QuestExtraDataRequest();
+        }
+
+        // 按批次把当前服务端任务书的扩展字段发回请求的玩家
+        private static void handle(QuestExtraDataRequest message, Supplier<NetworkEvent.Context> context_supplier) {
+            ServerPlayer player = context_supplier.get().getSender();
+            if (player == null || ServerQuestFile.INSTANCE == null) {
+                return;
+            }
+            List<QuestExtraDataSync.Entry> entries = QuestExtraDataSync.collect(ServerQuestFile.INSTANCE);
+            for (List<QuestExtraDataSync.Entry> batch : QuestExtraDataSync.split(entries)) {
+                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new QuestExtraDataResponse(batch));
+            }
+        }
+    }
+
+    private record QuestExtraDataResponse(List<QuestExtraDataSync.Entry> entries) {
+        private void encode(FriendlyByteBuf buffer) {
+            QuestExtraDataSync.write(buffer, this.entries);
+        }
+
+        private static QuestExtraDataResponse decode(FriendlyByteBuf buffer) {
+            return new QuestExtraDataResponse(QuestExtraDataSync.read(buffer));
+        }
+
+        private static void handle(QuestExtraDataResponse message, Supplier<NetworkEvent.Context> context_supplier) {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> QuestExtraDataClient.receive(message.entries));
         }
     }
 }
