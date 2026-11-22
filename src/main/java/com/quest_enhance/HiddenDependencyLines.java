@@ -8,7 +8,6 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Movable;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestLink;
-import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -146,26 +145,7 @@ public final class HiddenDependencyLines {
         return value.isNumber() ? DecorativeDependencyLines.questNode(value.getAsLong()) : null;
     }
 
-    // 将隐藏前置线写入 FTB Quests 的章节网络数据
-    public static void writeNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        List<Line> lines = get(chapter);
-        buffer.writeVarInt(lines.size());
-        for (Line line : lines) {
-            buffer.writeUtf(line.source_node(), 128);
-            buffer.writeUtf(line.dependency_node(), 128);
-            buffer.writeBoolean(line.reveal_on_hover());
-        }
-    }
 
-    // 从 FTB Quests 的章节网络数据恢复隐藏前置线
-    public static void readNetData(Chapter chapter, FriendlyByteBuf buffer) {
-        List<Line> lines = get(chapter);
-        lines.clear();
-        int line_count = Math.max(0, Math.min(buffer.readVarInt(), 4096));
-        for (int index = 0; index < line_count; index++) {
-            lines.add(new Line(buffer.readUtf(128), buffer.readUtf(128), buffer.readBoolean()));
-        }
-    }
 
     // 保存一条隐藏前置线的显示行为
     public record Line(String source_node, String dependency_node, boolean reveal_on_hover) {

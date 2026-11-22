@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftbquests.quest.Quest;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
@@ -46,20 +45,5 @@ public final class QuestViewBackground {
         set(quest, Identifier.tryParse(data.get(DATA_KEY).getAsString()));
     }
 
-    // 将任务详情面板背景图片写入任务书网络同步数据
-    public static void writeNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        Optional<Identifier> resource_id = get(quest);
-        buffer.writeBoolean(resource_id.isPresent());
-        resource_id.ifPresent(value -> buffer.writeUtf(value.toString(), 256));
-    }
 
-    // 从任务书网络同步数据恢复任务详情面板背景图片
-    public static void readNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        if (!buffer.readBoolean()) {
-            set(quest, null);
-            return;
-        }
-
-        set(quest, Identifier.tryParse(buffer.readUtf(256)));
-    }
 }

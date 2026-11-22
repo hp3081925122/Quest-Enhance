@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftbquests.quest.BaseQuestFile;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
@@ -46,20 +45,5 @@ public final class ChapterSidebarBackground {
         set(file, Identifier.tryParse(data.get(DATA_KEY).getAsString()));
     }
 
-    // 将章节侧边栏背景图片写入任务书网络同步数据
-    public static void writeNetData(BaseQuestFile file, RegistryFriendlyByteBuf buffer) {
-        Optional<Identifier> resource_id = get(file);
-        buffer.writeBoolean(resource_id.isPresent());
-        resource_id.ifPresent(value -> buffer.writeUtf(value.toString(), 256));
-    }
 
-    // 从任务书网络同步数据恢复章节侧边栏背景图片
-    public static void readNetData(BaseQuestFile file, RegistryFriendlyByteBuf buffer) {
-        if (!buffer.readBoolean()) {
-            set(file, null);
-            return;
-        }
-
-        set(file, Identifier.tryParse(buffer.readUtf(256)));
-    }
 }

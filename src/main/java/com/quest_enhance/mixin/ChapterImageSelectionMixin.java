@@ -63,21 +63,5 @@ public abstract class ChapterImageSelectionMixin implements ChapterImageSelectio
                 && raw_value.getAsBoolean();
     }
 
-    // 将范围选取属性同步到客户端章节图片对象
-    @Inject(method = "writeNetData", at = @At("TAIL"))
-    private void quest_enhance$write_box_selection_net_data(
-            RegistryFriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        buffer.writeBoolean(this.quest_enhance$exclude_from_box_selection);
-    }
 
-    // 从服务端网络数据恢复范围选取属性
-    @Inject(method = "readNetData", at = @At("TAIL"))
-    private void quest_enhance$read_box_selection_net_data(
-            RegistryFriendlyByteBuf buffer,
-            CallbackInfo callback_info
-    ) {
-        this.quest_enhance$exclude_from_box_selection = buffer.readBoolean();
-    }
 }

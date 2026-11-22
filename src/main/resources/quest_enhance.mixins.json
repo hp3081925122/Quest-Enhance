@@ -18,6 +18,7 @@
     "TaskCompletionMixin"
   ],
   "client": [
+    "ClientQuestFileSyncMixin",
     "ChapterButtonMixin",
     "ChapterPanelListButtonAccessor",
     "ChapterPanelMixin",

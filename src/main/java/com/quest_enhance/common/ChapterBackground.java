@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftbquests.quest.Chapter;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
@@ -47,20 +46,5 @@ public final class ChapterBackground {
         set(chapter, resource_id);
     }
 
-    // 将章节背景图片追加到 FTB Quests 的编辑同步数据
-    public static void writeNetData(Chapter chapter, RegistryFriendlyByteBuf buffer) {
-        Optional<Identifier> resource_id = get(chapter);
-        buffer.writeBoolean(resource_id.isPresent());
-        resource_id.ifPresent(value -> buffer.writeUtf(value.toString(), 256));
-    }
 
-    // 从 FTB Quests 的编辑同步数据恢复章节背景图片
-    public static void readNetData(Chapter chapter, RegistryFriendlyByteBuf buffer) {
-        if (!buffer.readBoolean()) {
-            set(chapter, null);
-            return;
-        }
-
-        set(chapter, Identifier.tryParse(buffer.readUtf(256)));
-    }
 }

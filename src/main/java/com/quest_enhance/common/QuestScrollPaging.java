@@ -2,7 +2,6 @@ package com.quest_enhance.common;
 
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftbquests.quest.Quest;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -39,13 +38,5 @@ public final class QuestScrollPaging {
         setDisabled(quest, data.has(DATA_KEY) && data.get(DATA_KEY).getAsBoolean());
     }
 
-    // 将任务节点开关写入任务书网络同步数据
-    public static void writeNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        buffer.writeBoolean(isDisabled(quest));
-    }
 
-    // 从任务书网络同步数据恢复任务节点开关
-    public static void readNetData(Quest quest, RegistryFriendlyByteBuf buffer) {
-        setDisabled(quest, buffer.readBoolean());
-    }
 }

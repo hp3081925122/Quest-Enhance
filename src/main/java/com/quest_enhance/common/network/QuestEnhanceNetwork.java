@@ -3,6 +3,7 @@ package com.quest_enhance.common.network;
 import com.quest_enhance.QuestEnhance;
 import com.quest_enhance.common.description.PlayerPersistentDataDescription;
 import com.quest_enhance.common.integration.KubeJSPersistentDataBridge;
+import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -24,13 +25,35 @@ public final class QuestEnhanceNetwork {
     private static boolean client_receive_checked;
     private static Method client_send_to_server;
     private static boolean client_send_checked;
+    private static Method client_extra_receive;
+    private static boolean client_extra_receive_checked;
 
     private QuestEnhanceNetwork() {
     }
 
     // 使用 NeoForge 原生负载注册玩家持久化数据查询包
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("1")
+        // 2：扩展字段改走独立数据包，旧版本客户端与服务端不能混用
+        event.registrar("2")
+                .playToServer(
+                        QuestExtraDataRequest.TYPE,
+                        QuestExtraDataRequest.STREAM_CODEC,
+                        (payload, context) -> {
+                            if (!(context.player() instanceof ServerPlayer) || !ServerQuestFile.exists()) {
+                                return;
+                            }
+                            List<QuestExtraDataSync.Entry> entries = QuestExtraDataSync.collect(ServerQuestFile.getInstance());
+                            for (int start = 0; start < entries.size(); start += QuestExtraDataSync.MAXIMUM_ENTRIES_PER_PACKET) {
+                                int end = Math.min(entries.size(), start + QuestExtraDataSync.MAXIMUM_ENTRIES_PER_PACKET);
+                                context.reply(new QuestExtraDataResponse(List.copyOf(entries.subList(start, end))));
+                            }
+                        }
+                )
+                .playToClient(
+                        QuestExtraDataResponse.TYPE,
+                        QuestExtraDataResponse.STREAM_CODEC,
+                        (payload, context) -> receiveClientExtraData(payload.entries)
+                )
                 .playToServer(
                         PlayerPersistentDataRequest.TYPE,
                         PlayerPersistentDataRequest.STREAM_CODEC,
@@ -63,8 +86,34 @@ public final class QuestEnhanceNetwork {
         }
     }
 
+    // 客户端收到 FTB 任务书同步后，单独向服务端请求 Quest Enhance 扩展字段
+    public static void requestQuestExtraData() {
+        sendClientRequest(new QuestExtraDataRequest());
+    }
+
+    // 通过反射调用客户端接收入口，避免服务端加载客户端类
+    private static void receiveClientExtraData(List<QuestExtraDataSync.Entry> entries) {
+        if (!client_extra_receive_checked) {
+            client_extra_receive_checked = true;
+            try {
+                client_extra_receive = Class.forName("com.quest_enhance.client.QuestExtraDataClient")
+                        .getMethod("receive", List.class);
+            } catch (ReflectiveOperationException | LinkageError ignored) {
+                client_extra_receive = null;
+            }
+        }
+        if (client_extra_receive == null) {
+            return;
+        }
+        try {
+            client_extra_receive.invoke(null, entries);
+        } catch (ReflectiveOperationException | LinkageError exception) {
+            QuestEnhance.LOGGER.warn("Failed to apply Quest Enhance extra quest data on the client", exception);
+        }
+    }
+
     // 通过反射调用客户端发包入口，避免服务端加载 NeoForge 客户端类
-    private static void sendClientRequest(PlayerPersistentDataRequest request) {
+    private static void sendClientRequest(CustomPacketPayload request) {
         if (!client_send_checked) {
             client_send_checked = true;
             try {
@@ -134,6 +183,34 @@ public final class QuestEnhanceNetwork {
             }
         }
         return selected;
+    }
+
+    private record QuestExtraDataRequest() implements CustomPacketPayload {
+        private static final Type<QuestExtraDataRequest> TYPE = new Type<>(
+                Identifier.fromNamespaceAndPath(QuestEnhance.MOD_ID, "quest_extra_data_request")
+        );
+        private static final StreamCodec<RegistryFriendlyByteBuf, QuestExtraDataRequest> STREAM_CODEC =
+                StreamCodec.unit(new QuestExtraDataRequest());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    private record QuestExtraDataResponse(List<QuestExtraDataSync.Entry> entries) implements CustomPacketPayload {
+        private static final Type<QuestExtraDataResponse> TYPE = new Type<>(
+                Identifier.fromNamespaceAndPath(QuestEnhance.MOD_ID, "quest_extra_data_response")
+        );
+        private static final StreamCodec<RegistryFriendlyByteBuf, QuestExtraDataResponse> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> QuestExtraDataSync.write(buffer, payload.entries),
+                buffer -> new QuestExtraDataResponse(QuestExtraDataSync.read(buffer))
+        );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
     }
 
     private record PlayerPersistentDataRequest(List<String> keys) implements CustomPacketPayload {
