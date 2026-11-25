@@ -8,12 +8,15 @@ import com.quest_enhance.client.clipboard.QuestEnhanceClipboardEntry;
 import com.quest_enhance.client.history.QuestScreenEditHistory;
 import com.quest_enhance.client.quest.QuestSelectionTransform;
 import com.mojang.datafixers.util.Pair;
+import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icons;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.ui.ContextMenuItem;
+import dev.ftb.mods.ftblibrary.ui.GuiHelper;
 import dev.ftb.mods.ftblibrary.ui.Widget;
 import dev.ftb.mods.ftblibrary.ui.Theme;
 import dev.ftb.mods.ftblibrary.ui.input.Key;
+import dev.ftb.mods.ftblibrary.ui.input.MouseButton;
 import dev.ftb.mods.ftbquests.client.gui.CustomToast;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPanel;
 import dev.ftb.mods.ftbquests.client.gui.quests.QuestPositionableButton;
@@ -94,6 +97,71 @@ public abstract class QuestScreenMixin {
     @Shadow
     @Final
     private QuestPanel questPanel;
+
+    @Shadow
+    MouseButton grabbed;
+
+    @Shadow
+    int prevMouseX;
+
+    @Shadow
+    int prevMouseY;
+
+    @Unique
+    private static final Color4I QUEST_ENHANCE_SELECTION_BORDER = Color4I.rgb(0xFFFFFF).withAlpha(220);
+
+    @Unique
+    private static final Color4I QUEST_ENHANCE_SELECTION_FILL = Color4I.rgb(0x66B2FF).withAlpha(55);
+
+    @Unique
+    private boolean quest_enhance$logged_selection_overlay;
+
+    // 启用自定义章节背景时在前景顶层补绘高对比度框选矩形，避免被深色背景或画布装饰图遮挡
+    @Inject(method = "drawForeground", at = @At("TAIL"))
+    private void quest_enhance$draw_selection_box_overlay(
+            GuiGraphics graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        if (this.grabbed == null || !this.grabbed.isMiddle()) {
+            this.quest_enhance$logged_selection_overlay = false;
+            return;
+        }
+
+        Chapter chapter = ((QuestScreenAccessor) (Object) this).quest_enhance$get_selected_chapter();
+        if (chapter == null || ChapterBackground.get(chapter).isEmpty()) {
+            return;
+        }
+
+        QuestScreen screen = (QuestScreen) (Object) this;
+        int mouse_x = screen.getMouseX();
+        int mouse_y = screen.getMouseY();
+        int box_x = Math.min(this.prevMouseX, mouse_x);
+        int box_y = Math.min(this.prevMouseY, mouse_y);
+        int box_w = Math.abs(mouse_x - this.prevMouseX);
+        int box_h = Math.abs(mouse_y - this.prevMouseY);
+        if (box_w <= 0 || box_h <= 0) {
+            return;
+        }
+
+        if (!this.quest_enhance$logged_selection_overlay) {
+            QuestEnhance.LOGGER.debug(
+                    "Drawing selection box overlay above custom chapter background: chapter={}, rect=({}, {}, {}, {})",
+                    chapter.getId(),
+                    box_x,
+                    box_y,
+                    box_w,
+                    box_h
+            );
+            this.quest_enhance$logged_selection_overlay = true;
+        }
+        QUEST_ENHANCE_SELECTION_FILL.draw(graphics, box_x, box_y, box_w, box_h);
+        GuiHelper.drawHollowRect(graphics, box_x, box_y, box_w, box_h, QUEST_ENHANCE_SELECTION_BORDER, false);
+    }
 
     // 按原版任务书的完整背景层绘制当前章节背景，避免画布滚动偏移导致只覆盖局部区域
     @Inject(

@@ -664,11 +664,12 @@ public final class DescriptionComponentMenu {
             MultilineTextEditorAccess editor,
             ItemStack selected_stack
     ) {
-        // 图标保留完整 NBT、耐久和数量
+        // 使用 Base64 编码保存完整 NBT、耐久和数量，彻底避免花括号嵌套导致 FTB 解析报 Invalid formatting
         ItemStack icon_stack = selected_stack.copy();
         openItemIconConfig(
                 parent,
-                ItemIcon.getItemIcon(icon_stack).toString(),
+                icon_stack,
+                null,
                 18,
                 18,
                 ImageAlign.CENTER,
@@ -685,8 +686,10 @@ public final class DescriptionComponentMenu {
             String hover_text,
             Consumer<String> save
     ) {
+        ItemStack stack = component.image instanceof ItemIcon item_icon ? item_icon.getStack().copy() : ItemStack.EMPTY;
         openItemIconConfig(
                 parent,
+                stack,
                 component.image.toString(),
                 component.width,
                 component.height,
@@ -697,10 +700,11 @@ public final class DescriptionComponentMenu {
         );
     }
 
-    // 统一承载新建和编辑物品图标，避免原生图片选择器丢失 item 图标
+    // 统一承载新建和编辑物品图标，优先生成无花括号嵌套的 Base64 物品图标标记
     private static void openItemIconConfig(
             Panel parent,
-            String item_icon,
+            ItemStack icon_stack,
+            String fallback_item_icon,
             int initial_width,
             int initial_height,
             ImageAlign initial_align,
@@ -714,17 +718,30 @@ public final class DescriptionComponentMenu {
         boolean[] fit = {initial_fit};
         String[] hover_text = {initial_hover_text};
 
-        // 物品图标继续使用 FTB 原生图片标记，不改变任务描述格式
         ConfigGroup group = new ConfigGroup("quest_enhance", accepted -> {
             if (accepted) {
-                save.accept(imageMarkup(
-                        item_icon,
-                        width[0],
-                        height[0],
-                        align[0],
-                        fit[0],
-                        hover_text[0]
-                ));
+                String safe_hover = hover_text[0] == null ? "" : hover_text[0].replace("{", "").replace("}", "");
+                String markup;
+                if (icon_stack != null && !icon_stack.isEmpty()) {
+                    markup = com.quest_enhance.common.description.QuestDescriptionComponents.itemIcon(
+                            icon_stack,
+                            width[0],
+                            height[0],
+                            align[0].name().toLowerCase(java.util.Locale.ROOT),
+                            fit[0],
+                            safe_hover
+                    );
+                } else {
+                    markup = imageMarkup(
+                            fallback_item_icon == null ? "" : fallback_item_icon,
+                            width[0],
+                            height[0],
+                            align[0],
+                            fit[0],
+                            safe_hover
+                    );
+                }
+                save.accept(markup);
             }
             parent.run();
         }) {

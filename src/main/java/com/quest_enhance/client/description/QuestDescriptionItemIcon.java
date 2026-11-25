@@ -65,7 +65,7 @@ public final class QuestDescriptionItemIcon {
         if (hoverText != null && !hoverText.isBlank()) {
             component.withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(
                     HoverEvent.Action.SHOW_TEXT,
-                    Component.literal(hoverText)
+                    Component.literal(hoverText.replace("%20", " "))
             )));
         }
         return component;
