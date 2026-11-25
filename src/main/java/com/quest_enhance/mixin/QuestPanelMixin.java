@@ -103,9 +103,9 @@ public abstract class QuestPanelMixin {
     @Shadow
     protected double questY;
 
-    // 在章节画布节点绘制前绘制当前章节的独立背景
+    // 清理画布多选中的空引用，章节背景已迁移至 QuestScreen.drawBackground 避免遮挡框选矩形
     @Inject(method = "draw", at = @At("HEAD"))
-    private void quest_enhance$draw_chapter_background(
+    private void quest_enhance$cleanup_null_selections(
             GuiGraphicsExtractor graphics,
             Theme theme,
             int x,
@@ -125,29 +125,20 @@ public abstract class QuestPanelMixin {
                     selected_objects.size()
             );
         }
+    }
 
-        Chapter chapter = ((QuestScreenAccessor) (Object) this.questScreen)
-                .quest_enhance$get_selected_chapter();
-        if (chapter == null) {
-            return;
-        }
-
-        // 缓存图标对象并将背景铺满任务节点画布区域
-        ChapterBackground.get(chapter).ifPresent(resource_id -> {
-            Icon<?> background_icon = quest_enhance$chapter_background_icons.computeIfAbsent(
-                    resource_id,
-                    Icon::getIcon
-            );
-            if (!background_icon.isEmpty()) {
-                IconHelper.renderIcon(background_icon, graphics, x, y, width, height);
-            }
-        });
-
-        // 在 FTB 的画布滚动偏移中恢复原生前置线和装饰折线绘制
-        ((Panel) (Object) this).doWithScrollOffset(() -> {
-            ((QuestPanel) (Object) this).drawOffsetBackground(graphics, theme, x, y, width, height);
-            quest_enhance$render_decorative_dependency_line(graphics, theme, x, y, width, height);
-        });
+    // 在原生前置线绘制完成后叠加本模组的装饰折线
+    @Inject(method = "drawOffsetBackground", at = @At("TAIL"))
+    private void quest_enhance$draw_decorative_lines(
+            GuiGraphicsExtractor graphics,
+            Theme theme,
+            int x,
+            int y,
+            int width,
+            int height,
+            CallbackInfo callback_info
+    ) {
+        quest_enhance$render_decorative_dependency_line(graphics, theme, x, y, width, height);
     }
 
     // 按单条前置线设置隐藏、悬停显示或编辑模式专用颜色

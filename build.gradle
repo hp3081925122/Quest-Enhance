@@ -86,12 +86,6 @@ dependencies {
     localRuntime("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") {
         transitive = false
     }
-    localRuntime("maven.modrinth:watermedia:${watermedia_version}") {
-        transitive = false
-    }
-    localRuntime("maven.modrinth:watermedia-binaries:${watermedia_binaries_version}") {
-        transitive = false
-    }
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

@@ -2,6 +2,7 @@ package com.quest_enhance;
 
 import com.quest_enhance.client.config.QuestEnhanceClientConfig;
 import com.quest_enhance.client.description.QuestDescriptionGif;
+import com.quest_enhance.client.description.QuestDescriptionItemIcon;
 import com.quest_enhance.client.description.QuestDescriptionTable;
 import com.quest_enhance.client.description.QuestDescriptionVideo;
 import com.quest_enhance.common.network.QuestEnhanceNetwork;
@@ -49,6 +50,7 @@ public final class QuestEnhance {
         // 只在客户端模组总线上注册任务描述视频解析器
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
             mod_event_bus.addListener(QuestDescriptionGif::clientSetup);
+            mod_event_bus.addListener(QuestDescriptionItemIcon::clientSetup);
             mod_event_bus.addListener(QuestDescriptionVideo::clientSetup);
             mod_event_bus.addListener(QuestDescriptionTable::clientSetup);
         }

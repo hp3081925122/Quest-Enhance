@@ -15,6 +15,7 @@
   "quest_enhance.description_component.command.warning": "This component will run a command when clicked. Add this high-risk component?",
   "quest_enhance.description_component.remote_image": "Remote Image",
   "quest_enhance.description_component.item_icon": "Item Icon",
+  "quest_enhance.description_component.item_icon.invalid": "Invalid item icon marker",
   "quest_enhance.description_component.item_hover": "Item Tooltip",
   "quest_enhance.description_component.hover_text": "Hover Text",
   "quest_enhance.description_component.font": "Custom Font",

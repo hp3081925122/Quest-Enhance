@@ -26,4 +26,7 @@ public interface QuestPanelAccessor {
             int end_alpha,
             float texture_offset
     );
+    // 检查当前是否处于画布拖动框选状态
+    @Invoker("isDraggingSelectionBox")
+    boolean quest_enhance$is_dragging_selection_box();
 }
